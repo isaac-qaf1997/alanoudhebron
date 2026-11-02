@@ -1,0 +1,86 @@
+import ExcelJS from 'exceljs'
+import { REGIONS, STATUSES, isRegion, isStatus } from '@/lib/constants'
+import { isDateString, localDateString } from '@/lib/format'
+import { getDeliverySheet } from '@/lib/queries'
+
+export const runtime = 'nodejs'
+
+export async function GET(request: Request) {
+  const url = new URL(request.url)
+  const dateParam = url.searchParams.get('date')
+  const date = isDateString(dateParam) ? dateParam : localDateString()
+  const courierId = Number(url.searchParams.get('courier')) || null
+
+  const rows = await getDeliverySheet(date, courierId)
+
+  const workbook = new ExcelJS.Workbook()
+  workbook.creator = 'العنود للزي الشرعي'
+  const sheet = workbook.addWorksheet(`كشف ${date}`, { views: [{ rightToLeft: true, state: 'frozen', ySplit: 1 }] })
+
+  sheet.columns = [
+    { header: 'رقم الطلب', key: 'id', width: 10 },
+    { header: 'اسم العميلة', key: 'name', width: 22 },
+    { header: 'الهاتف', key: 'phone', width: 16 },
+    { header: 'المدينة', key: 'city', width: 14 },
+    { header: 'المنطقة', key: 'region', width: 12 },
+    { header: 'العنوان', key: 'address', width: 28 },
+    { header: 'المنتجات', key: 'items', width: 40 },
+    { header: 'عدد القطع', key: 'pieces', width: 10 },
+    { header: 'شركة التوصيل', key: 'courier', width: 16 },
+    { header: 'رقم التتبع', key: 'tracking', width: 16 },
+    { header: 'المبلغ المطلوب', key: 'total', width: 14 },
+    { header: 'رسوم الشركة', key: 'fee', width: 12 },
+    { header: 'الصافي', key: 'net', width: 12 },
+    { header: 'الحالة', key: 'status', width: 12 },
+    { header: 'ملاحظات', key: 'notes', width: 24 },
+  ]
+
+  for (const o of rows) {
+    const items = o.items.map((i) => `${i.modelName} (${i.color}) × ${i.quantity}`)
+    const exchanges = o.exchanges.map((e) => `استبدال: ${e.returnedName} ← ${e.newName} (${e.newColor})`)
+    sheet.addRow({
+      id: o.id,
+      name: o.customerName,
+      phone: o.phone,
+      city: o.city,
+      region: isRegion(o.region) ? REGIONS[o.region].label : o.region,
+      address: o.address ?? '',
+      items: [...items, ...exchanges].join('\n'),
+      pieces: o.items.reduce((s, i) => s + i.quantity, 0),
+      courier: o.courierName ?? '',
+      tracking: o.trackingNumber ?? '',
+      total: o.total,
+      fee: o.courierFee,
+      net: o.total - o.courierFee,
+      status: isStatus(o.status) ? STATUSES[o.status].label : o.status,
+      notes: o.notes ?? '',
+    })
+  }
+
+  const totalRow = sheet.addRow({
+    id: 'المجموع',
+    pieces: rows.reduce((s, o) => s + o.items.reduce((is, i) => is + i.quantity, 0), 0),
+    total: rows.reduce((s, o) => s + o.total, 0),
+    fee: rows.reduce((s, o) => s + o.courierFee, 0),
+    net: rows.reduce((s, o) => s + o.total - o.courierFee, 0),
+  })
+  totalRow.font = { bold: true }
+
+  const header = sheet.getRow(1)
+  header.font = { bold: true, color: { argb: 'FF1A1A1A' } }
+  header.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD4AF37' } }
+  sheet.eachRow((row) => {
+    row.alignment = { vertical: 'top', horizontal: 'right', wrapText: true, readingOrder: 'rtl' }
+  })
+  for (const key of ['total', 'fee', 'net']) sheet.getColumn(key).numFmt = '#,##0.00 "₪"'
+
+  const buffer = await workbook.xlsx.writeBuffer()
+  const filename = `delivery-sheet-${date}.xlsx`
+  return new Response(buffer, {
+    headers: {
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Cache-Control': 'no-store',
+    },
+  })
+}
