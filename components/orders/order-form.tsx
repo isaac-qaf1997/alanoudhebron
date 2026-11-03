@@ -126,6 +126,8 @@ export function OrderForm({ models, couriers }: { models: ModelWithColors[]; cou
           <legend className="mb-2 text-sm font-semibold text-primary">المنتجات</legend>
           {items.map((item, index) => {
             const model = modelById(item.modelId)
+            const selectedColor = model?.colors.find((c) => c.color === item.color)
+            const productImage = selectedColor?.imageUrl || model?.imageUrl
             return (
               <div key={item.key} className="flex flex-col gap-2 rounded-xl border border-border bg-background/40 p-3">
                 <div className="flex items-center justify-between">
@@ -177,6 +179,7 @@ export function OrderForm({ models, couriers }: { models: ModelWithColors[]; cou
                     onChange={(e) => updateItem(item.key, { quantity: Math.max(1, Number(e.target.value) || 1) })}
                   />
                 </div>
+                {productImage ? <ProductImagePreview src={productImage} label={`${model?.name ?? ''} — ${item.color}`} /> : null}
               </div>
             )
           })}
@@ -207,6 +210,10 @@ export function OrderForm({ models, couriers }: { models: ModelWithColors[]; cou
           {exchanges.map((ex, index) => {
             const returned = modelById(ex.returnedModelId)
             const replacement = modelById(ex.newModelId)
+            const returnedColor = returned?.colors.find((c) => c.color === ex.returnedColor)
+            const replacementColor = replacement?.colors.find((c) => c.color === ex.newColor)
+            const returnedImage = returnedColor?.imageUrl || returned?.imageUrl
+            const replacementImage = replacementColor?.imageUrl || replacement?.imageUrl
             const diff = priceOf(ex.newModelId) * ex.newQty - priceOf(ex.returnedModelId) * ex.returnedQty
             return (
               <div key={ex.key} className="flex flex-col gap-2 rounded-xl border border-info/25 bg-info/5 p-3">
@@ -257,6 +264,7 @@ export function OrderForm({ models, couriers }: { models: ModelWithColors[]; cou
                     onChange={(e) => updateExchange(ex.key, { returnedQty: Math.max(1, Number(e.target.value) || 1) })}
                   />
                 </div>
+                {returnedImage ? <ProductImagePreview src={returnedImage} label={`${returned?.name ?? ''} — ${ex.returnedColor}`} /> : null}
                 <p className="text-xs font-medium text-muted-foreground">القطعة الجديدة</p>
                 <Select
                   aria-label="الموديل الجديد"
@@ -292,6 +300,7 @@ export function OrderForm({ models, couriers }: { models: ModelWithColors[]; cou
                     onChange={(e) => updateExchange(ex.key, { newQty: Math.max(1, Number(e.target.value) || 1) })}
                   />
                 </div>
+                {replacementImage ? <ProductImagePreview src={replacementImage} label={`${replacement?.name ?? ''} — ${ex.newColor}`} /> : null}
                 {returned && replacement ? (
                   <p className="text-xs">
                     فرق السعر:{' '}
@@ -434,5 +443,17 @@ export function OrderForm({ models, couriers }: { models: ModelWithColors[]; cou
         </Button>
       </form>
     </Panel>
+  )
+}
+
+
+function ProductImagePreview({ src, label }: { src: string; label: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-muted/20 p-2">
+      {/* Cloudinary-hosted product image. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt={label} className="size-14 rounded-md object-cover" />
+      <span className="text-xs text-muted-foreground">صورة المنتج المختار</span>
+    </div>
   )
 }

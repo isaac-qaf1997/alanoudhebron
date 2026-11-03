@@ -8,6 +8,7 @@ export const models = pgTable('models', {
   sku: text('sku'),
   price: money('price').notNull().default(0),
   cost: money('cost').notNull().default(0),
+  imageUrl: text('image_url'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
@@ -16,6 +17,7 @@ export const modelColors = pgTable('model_colors', {
   modelId: integer('model_id').notNull(),
   color: text('color').notNull(),
   stock: integer('stock').notNull().default(0),
+  imageUrl: text('image_url'),
 })
 
 export const couriers = pgTable('couriers', {
