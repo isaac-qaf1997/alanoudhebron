@@ -3,23 +3,24 @@
 import { Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useId, useState, useTransition } from 'react'
 import { createCourier, deleteCourier, updateCourier } from '@/app/actions'
+import { CourierIntegrationSettings } from '@/components/shipping/courier-integration-settings'
 import { Button } from '@/components/ui/button'
 import { Field, Input } from '@/components/ui/field'
 import { EmptyState, Panel } from '@/components/ui/panel'
 import { REGIONS } from '@/lib/constants'
-import type { Courier } from '@/lib/db/schema'
+import type { CourierPublic } from '@/lib/db/schema'
 import { formatMoney } from '@/lib/format'
 
 const empty = { name: '', phone: '', feeWestBank: 15, feeJerusalem: 25, feeInside: 60, active: true }
 
-export function CourierManager({ couriers }: { couriers: Courier[] }) {
+export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
   const uid = useId()
   const [pending, startTransition] = useTransition()
   const [form, setForm] = useState(empty)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  function edit(c: Courier) {
+  function edit(c: CourierPublic) {
     setEditingId(c.id)
     setForm({
       name: c.name,
@@ -46,7 +47,7 @@ export function CourierManager({ couriers }: { couriers: Courier[] }) {
     })
   }
 
-  function remove(c: Courier) {
+  function remove(c: CourierPublic) {
     if (!window.confirm(`حذف شركة ${c.name}؟ ستُزال من الطلبات المرتبطة بها.`)) return
     startTransition(async () => {
       const result = await deleteCourier(c.id)
@@ -180,6 +181,7 @@ export function CourierManager({ couriers }: { couriers: Courier[] }) {
                     </div>
                   ))}
                 </dl>
+                <CourierIntegrationSettings courier={c} />
               </li>
             ))}
           </ul>

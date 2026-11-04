@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Field, Input, Select, Textarea } from '@/components/ui/field'
 import { Panel } from '@/components/ui/panel'
 import { CITIES, CITY_REGIONS, REGIONS, REGION_KEYS, type RegionKey } from '@/lib/constants'
-import type { Courier } from '@/lib/db/schema'
+import type { CourierPublic } from '@/lib/db/schema'
 import { formatMoney } from '@/lib/format'
 import type { ModelWithColors } from '@/lib/queries'
 
@@ -45,7 +45,10 @@ const emptyCustomer = {
   notes: '',
 }
 
-export function OrderForm({ models, couriers }: { models: ModelWithColors[]; couriers: Courier[] }) {
+type OrderFormModel = Omit<ModelWithColors, 'cost'>
+type OrderFormCourier = Pick<CourierPublic, 'id' | 'name'>
+
+export function OrderForm({ models, couriers }: { models: OrderFormModel[]; couriers: OrderFormCourier[] }) {
   const uid = useId()
   const [pending, startTransition] = useTransition()
   const [customer, setCustomer] = useState(emptyCustomer)
@@ -107,7 +110,11 @@ export function OrderForm({ models, couriers }: { models: ModelWithColors[]; cou
         setCustomer(emptyCustomer)
         setItems([newItem()])
         setExchanges([])
-        setMessage({ type: 'success', text: 'تم إنشاء الطلب وخصم المخزون' })
+        setMessage(
+          result.warning
+            ? { type: 'error', text: result.warning }
+            : { type: 'success', text: 'تم إنشاء الطلب وخصم المخزون' },
+        )
       } else {
         setMessage({ type: 'error', text: result.error })
       }

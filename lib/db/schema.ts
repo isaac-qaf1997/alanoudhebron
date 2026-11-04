@@ -1,6 +1,28 @@
-import { boolean, integer, numeric, pgTable, serial, text, timestamp } from 'drizzle-orm/pg-core'
+import { boolean, integer, jsonb, numeric, pgTable, serial, text, timestamp, uniqueIndex, index } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
 
 const money = (name: string) => numeric(name, { precision: 10, scale: 2, mode: 'number' })
+
+export const users = pgTable(
+  'users',
+  {
+    id: serial('id').primaryKey(),
+    username: text('username').notNull(),
+    passwordHash: text('password_hash').notNull(),
+    role: text('role').$type<'admin' | 'staff'>().notNull().default('staff'),
+    active: boolean('active').notNull().default(true),
+    failedLoginAttempts: integer('failed_login_attempts').notNull().default(0),
+    lockedUntil: timestamp('locked_until', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+  },
+  (table) => ({ usernameUnique: uniqueIndex('users_username_lower_uq').on(sql`lower(${table.username})`), roleIndex: index('users_role_idx').on(table.role) }),
+)
+
+export type UserRole = 'admin' | 'staff'
+export type AppUser = typeof users.$inferSelect
+
 
 export const models = pgTable('models', {
   id: serial('id').primaryKey(),
@@ -28,6 +50,11 @@ export const couriers = pgTable('couriers', {
   feeJerusalem: money('fee_jerusalem').notNull().default(25),
   feeInside: money('fee_inside').notNull().default(60),
   active: boolean('active').notNull().default(true),
+  apiBaseUrl: text('api_base_url'),
+  apiKeyEncrypted: text('api_key_encrypted'),
+  secretTokenEncrypted: text('secret_token_encrypted'),
+  apiEnabled: boolean('api_enabled').notNull().default(false),
+  sendOnOrderCreate: boolean('send_on_order_create').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
@@ -50,6 +77,10 @@ export const orders = pgTable('orders', {
   notes: text('notes'),
   shippedAt: timestamp('shipped_at', { withTimezone: true }),
   deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+  externalShipmentId: text('external_shipment_id'),
+  shippingProviderStatus: text('shipping_provider_status'),
+  shippingSyncedAt: timestamp('shipping_synced_at', { withTimezone: true }),
+  shippingError: text('shipping_error'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
@@ -82,9 +113,37 @@ export const orderExchanges = pgTable('order_exchanges', {
   diff: money('diff').notNull(),
 })
 
+export const shippingWebhookEvents = pgTable(
+  'shipping_webhook_events',
+  {
+    id: serial('id').primaryKey(),
+    eventId: text('event_id').notNull(),
+    courierId: integer('courier_id').notNull(),
+    trackingNumber: text('tracking_number').notNull(),
+    providerStatus: text('provider_status').notNull(),
+    payload: jsonb('payload').$type<Record<string, unknown>>(),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({ eventIdUnique: uniqueIndex('shipping_webhook_events_event_id_uq').on(table.eventId) }),
+)
+
 export type Model = typeof models.$inferSelect
 export type ModelColor = typeof modelColors.$inferSelect
 export type Courier = typeof couriers.$inferSelect
+export type CourierPublic = Pick<
+  Courier,
+  | 'id'
+  | 'name'
+  | 'phone'
+  | 'feeWestBank'
+  | 'feeJerusalem'
+  | 'feeInside'
+  | 'active'
+  | 'createdAt'
+  | 'apiBaseUrl'
+  | 'apiEnabled'
+  | 'sendOnOrderCreate'
+> & { hasApiKey: boolean; hasSecretToken: boolean }
 export type Order = typeof orders.$inferSelect
 export type OrderItem = typeof orderItems.$inferSelect
 export type OrderExchange = typeof orderExchanges.$inferSelect

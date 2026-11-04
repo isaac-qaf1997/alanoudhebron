@@ -7,12 +7,11 @@ import { RegionBadge, StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/field'
 import { STATUSES, STATUS_KEYS } from '@/lib/constants'
-import type { Courier } from '@/lib/db/schema'
 import { formatDateTime, formatMoney } from '@/lib/format'
-import type { OrderFull } from '@/lib/queries'
+import type { OrderDisplay } from '@/lib/order-display'
 import { cn } from '@/lib/utils'
 
-export function OrderCard({ order }: { order: OrderFull; couriers?: Courier[] }) {
+export function OrderCard({ order, isAdmin }: { order: OrderDisplay; isAdmin: boolean }) {
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
@@ -114,11 +113,18 @@ export function OrderCard({ order }: { order: OrderFull; couriers?: Courier[] })
               </option>
             ))}
           </Select>
-          <Button variant="ghost" size="icon" onClick={remove} disabled={pending} aria-label={`حذف الطلب ${order.id}`}>
-            <Trash2 className="size-4 text-destructive" />
-          </Button>
+          {isAdmin ? (
+            <Button variant="ghost" size="icon" onClick={remove} disabled={pending} aria-label={`حذف الطلب ${order.id}`}>
+              <Trash2 className="size-4 text-destructive" />
+            </Button>
+          ) : null}
         </div>
       </footer>
+      {order.shippingError ? (
+        <p className="rounded-lg border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
+          تعذر مزامنة الشحنة: {order.shippingError}
+        </p>
+      ) : null}
       {error ? (
         <p role="alert" className="text-sm text-destructive">
           {error}

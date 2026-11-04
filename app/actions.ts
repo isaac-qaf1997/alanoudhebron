@@ -3,6 +3,9 @@
 import { eq, inArray, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/db'
+import { encryptShippingSecret, verifyShippingSettingsPassword } from '@/lib/shipping/credentials'
+import { authorizeRole, type CurrentUser } from '@/lib/auth/session'
+import { sendOrderToCourier } from '@/lib/shipping/service'
 import {
   couriers,
   modelColors,
@@ -20,7 +23,7 @@ import {
   type StatusKey,
 } from '@/lib/constants'
 
-export type ActionResult = { ok: true } | { ok: false; error: string }
+export type ActionResult = { ok: true; warning?: string } | { ok: false; error: string }
 
 class UserError extends Error {}
 
@@ -62,11 +65,16 @@ function id(value: unknown) {
   return n
 }
 
-async function run(fn: () => Promise<void>): Promise<ActionResult> {
+async function run(
+  fn: (user: CurrentUser) => Promise<void | string>,
+  minimumRole: 'admin' | 'staff' = 'admin',
+): Promise<ActionResult> {
   try {
-    await fn()
+    const user = await authorizeRole(minimumRole)
+    if (!user) return { ok: false, error: 'انتهت الجلسة أو لا تملكين صلاحية تنفيذ هذه العملية. سجّلي الدخول مجدداً.' }
+    const warning = await fn(user)
     revalidatePath('/', 'layout')
-    return { ok: true }
+    return warning ? { ok: true, warning } : { ok: true }
   } catch (error) {
     if (error instanceof UserError) return { ok: false, error: error.message }
     console.error('[actions]', error)
@@ -205,6 +213,68 @@ export async function updateCourier(courierId: number, input: CourierInput) {
   })
 }
 
+export async function saveCourierIntegrationSettings(
+  courierId: number,
+  input: {
+    baseUrl: string
+    apiKey?: string
+    secretToken?: string
+    enabled: boolean
+    sendOnOrderCreate: boolean
+    adminPassword: string
+  },
+) {
+  return run(async () => {
+    let passwordValid = false
+    try {
+      passwordValid = verifyShippingSettingsPassword(text(input.adminPassword, 500))
+    } catch {
+      throw new UserError('أضيفي SHIPPING_SETTINGS_PASSWORD في إعدادات Vercel أولاً')
+    }
+    if (!passwordValid) throw new UserError('رمز إدارة إعدادات الربط غير صحيح')
+
+    const cid = id(courierId)
+    const [current] = await db.select().from(couriers).where(eq(couriers.id, cid)).limit(1)
+    if (!current) throw new UserError('شركة التوصيل غير موجودة')
+
+    const baseUrl = text(input.baseUrl, 500)
+    if (input.enabled) {
+      let parsed: URL
+      try {
+        parsed = new URL(baseUrl)
+      } catch {
+        throw new UserError('رابط Base URL غير صالح')
+      }
+      if (parsed.protocol !== 'https:' || parsed.username || parsed.password) {
+        throw new UserError('يجب أن يكون Base URL رابط HTTPS صالحاً')
+      }
+      if (!(input.apiKey?.trim() || current.apiKeyEncrypted)) {
+        throw new UserError('أدخلي API Key قبل تفعيل الربط')
+      }
+      if (!(input.secretToken?.trim() || current.secretTokenEncrypted)) {
+        throw new UserError('أدخلي Secret Token قبل تفعيل الربط')
+      }
+      if (!process.env.SHIPPING_CREDENTIALS_ENCRYPTION_KEY) {
+        throw new UserError('أضيفي SHIPPING_CREDENTIALS_ENCRYPTION_KEY في إعدادات Vercel أولاً')
+      }
+    }
+
+    const nextApiKey = input.apiKey?.trim()
+    const nextSecret = input.secretToken?.trim()
+    if ((nextApiKey || nextSecret) && !process.env.SHIPPING_CREDENTIALS_ENCRYPTION_KEY) {
+      throw new UserError('أضيفي SHIPPING_CREDENTIALS_ENCRYPTION_KEY في إعدادات Vercel أولاً')
+    }
+    const update: Partial<typeof couriers.$inferInsert> = {
+      apiBaseUrl: baseUrl || null,
+      apiEnabled: Boolean(input.enabled),
+      sendOnOrderCreate: Boolean(input.sendOnOrderCreate),
+    }
+    if (nextApiKey) update.apiKeyEncrypted = encryptShippingSecret(nextApiKey)
+    if (nextSecret) update.secretTokenEncrypted = encryptShippingSecret(nextSecret)
+    await db.update(couriers).set(update).where(eq(couriers.id, cid))
+  })
+}
+
 export async function deleteCourier(courierId: number) {
   return run(async () => {
     const cid = id(courierId)
@@ -293,7 +363,7 @@ export async function createOrder(input: OrderInput) {
 
     const courierId = input.courierId ? id(input.courierId) : null
 
-    await db.transaction(async (tx) => {
+    const createdOrderId = await db.transaction(async (tx) => {
       const modelIds = [
         ...new Set([
           ...items.map((i) => i.modelId),
@@ -410,14 +480,42 @@ export async function createOrder(input: OrderInput) {
       if (exchangeRows.length) {
         await tx.insert(orderExchanges).values(exchangeRows.map((r) => ({ ...r, orderId: order.id })))
       }
+      return order.id
     })
-  })
+
+    if (courierId) {
+      const [selectedCourier] = await db.select().from(couriers).where(eq(couriers.id, courierId)).limit(1)
+      if (selectedCourier?.apiEnabled && selectedCourier.sendOnOrderCreate) {
+        try {
+          await sendOrderToCourier(createdOrderId)
+          await db.update(orders).set({ status: 'shipped', shippedAt: new Date() }).where(eq(orders.id, createdOrderId))
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'فشل إرسال الطلب لشركة التوصيل'
+          return `تم حفظ الطلب، لكن لم يتم إرساله للشركة: ${message}`
+        }
+      }
+    }
+  }, 'staff')
 }
 
 export async function updateOrderStatus(orderId: number, status: string) {
-  return run(async () => {
+  return run(async (user) => {
     if (!isStatus(status)) throw new UserError('حالة غير صالحة')
     const oid = id(orderId)
+    const [before] = await db.select().from(orders).where(eq(orders.id, oid)).limit(1)
+    if (!before) throw new UserError('الطلب غير موجود')
+    if (user.role === 'staff' && status === 'shipped' && before.status !== 'shipped' && !before.trackingNumber) {
+      throw new UserError('إرسال الشحنة يحتاج صلاحية المدير. يمكن للموظف متابعة الطلب بعد إدخال رقم التتبع.')
+    }
+
+    if (status === 'shipped' && before.status !== 'shipped' && before.courierId && !before.trackingNumber) {
+      try {
+        await sendOrderToCourier(oid)
+      } catch (error) {
+        throw new UserError(error instanceof Error ? error.message : 'تعذر إنشاء الطرد لدى شركة التوصيل')
+      }
+    }
+
     await db.transaction(async (tx) => {
       const [current] = await tx.select().from(orders).where(eq(orders.id, oid))
       if (!current) throw new UserError('الطلب غير موجود')
@@ -437,7 +535,7 @@ export async function updateOrderStatus(orderId: number, status: string) {
         })
         .where(eq(orders.id, oid))
     })
-  })
+  }, 'staff')
 }
 
 export async function updateShipping(
@@ -463,6 +561,7 @@ export async function updateShipping(
         shippingFee,
         total: Math.max(current.itemsTotal + shippingFee + current.exchangeDiff, 0),
         courierFee: courierFeeFor(courier, region),
+        shippingError: null,
       })
       .where(eq(orders.id, oid))
   })
@@ -472,10 +571,26 @@ export async function bulkShip(orderIds: number[]) {
   return run(async () => {
     const ids = [...new Set(orderIds.map(id))]
     if (ids.length === 0) return
-    await db
-      .update(orders)
-      .set({ status: 'shipped', shippedAt: sql`coalesce(${orders.shippedAt}, now())` })
-      .where(sql`${inArray(orders.id, ids)} and ${orders.status} = 'preparing'`)
+    const failures: string[] = []
+    for (const orderId of ids) {
+      const [current] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1)
+      if (!current || current.status !== 'preparing') continue
+      if (!current.courierId) {
+        failures.push(`#${orderId}: لم تُحدد شركة التوصيل`)
+        continue
+      }
+      try {
+        if (!current.trackingNumber) await sendOrderToCourier(orderId)
+        await db
+          .update(orders)
+          .set({ status: 'shipped', shippedAt: sql`coalesce(${orders.shippedAt}, now())` })
+          .where(eq(orders.id, orderId))
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'فشل إنشاء الشحنة'
+        failures.push(`#${orderId}: ${message}`)
+      }
+    }
+    if (failures.length) return `لم يتم إرسال بعض الطلبات:\n${failures.join('\n')}`
   })
 }
 

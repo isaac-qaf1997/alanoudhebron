@@ -6,7 +6,7 @@ import { updateOrderStatus, updateShipping } from '@/app/actions'
 import { Button } from '@/components/ui/button'
 import { Input, Select } from '@/components/ui/field'
 import { REGIONS, REGION_KEYS, STATUSES, STATUS_KEYS } from '@/lib/constants'
-import type { Courier } from '@/lib/db/schema'
+import type { CourierPublic } from '@/lib/db/schema'
 import { formatMoney } from '@/lib/format'
 import type { OrderFull } from '@/lib/queries'
 import { cn } from '@/lib/utils'
@@ -19,7 +19,7 @@ export function ShipmentRow({
   onToggle,
 }: {
   order: OrderFull
-  couriers: Courier[]
+  couriers: CourierPublic[]
   selectable: boolean
   selected: boolean
   onToggle: () => void
@@ -149,6 +149,13 @@ export function ShipmentRow({
           </Button>
         </td>
       </tr>
+      {order.shippingError ? (
+        <tr>
+          <td colSpan={9} className="pb-2 text-xs text-destructive">
+            تعذر مزامنة الشحنة: {order.shippingError}
+          </td>
+        </tr>
+      ) : null}
       {error ? (
         <tr>
           <td colSpan={9} role="alert" className="pb-2 text-sm text-destructive">

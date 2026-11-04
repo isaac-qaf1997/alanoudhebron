@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { NextResponse } from 'next/server'
+import { authorizeRole } from '@/lib/auth/session'
 
 export const runtime = 'nodejs'
 
@@ -15,6 +16,8 @@ function cloudinarySignature(params: Record<string, string>, apiSecret: string) 
 }
 
 export async function POST(request: Request) {
+  if (!(await authorizeRole('admin'))) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 })
+
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME
   const apiKey = process.env.CLOUDINARY_API_KEY
   const apiSecret = process.env.CLOUDINARY_API_SECRET

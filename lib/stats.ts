@@ -1,8 +1,8 @@
 import { STATUS_KEYS, type StatusKey } from '@/lib/constants'
-import type { Courier } from '@/lib/db/schema'
+import type { CourierPublic } from '@/lib/db/schema'
 import type { OrderFull } from '@/lib/queries'
 
-export function computeStats(orders: OrderFull[], couriers: Courier[]) {
+export function computeStats(orders: OrderFull[], couriers: CourierPublic[]) {
   const statusCounts = Object.fromEntries(STATUS_KEYS.map((s) => [s, 0])) as Record<StatusKey, number>
   const cityCounts = new Map<string, number>()
 
