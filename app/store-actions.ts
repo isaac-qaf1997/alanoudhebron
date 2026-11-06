@@ -1,6 +1,8 @@
 'use server'
 
 import { eq, inArray, sql } from 'drizzle-orm'
+import { createHash } from 'node:crypto'
+import { headers } from 'next/headers'
 import { db } from '@/lib/db'
 import { modelColors, models, orderItems, orders } from '@/lib/db/schema'
 import { REGIONS, isRegion } from '@/lib/constants'
@@ -32,6 +34,35 @@ export async function submitStoreOrder(input: {
       return { ok: false, error: 'يرجى تعبئة الاسم والهاتف والمدينة والعنوان واختيار منطقة التوصيل بشكل صحيح.' }
     }
     if (paymentMethod !== 'cod') return { ok: false, error: 'الدفع المسبق غير متاح حالياً. اختاري الدفع عند الاستلام.' }
+
+    // Throttle both the originating IP (when supplied by the hosting proxy) and phone number.
+    const requestHeaders = await headers()
+    const forwarded = requestHeaders.get('x-forwarded-for')?.split(',')[0]?.trim()
+    const realIp = requestHeaders.get('x-real-ip')?.trim()
+    const ip = forwarded || realIp
+    const buckets = [
+      ...(ip ? [`ip:${createHash('sha256').update(ip).digest('hex')}`] : []),
+      `phone:${createHash('sha256').update(phone.replace(/\\D/g, '')).digest('hex')}`,
+    ]
+    for (const bucket of buckets) {
+      const [limit] = await db.execute<{ request_count: number }>(sql`
+        INSERT INTO store_order_rate_limits (bucket_key, window_started_at, request_count)
+        VALUES (${bucket}, now(), 1)
+        ON CONFLICT (bucket_key) DO UPDATE SET
+          request_count = CASE
+            WHEN store_order_rate_limits.window_started_at < now() - interval '1 hour' THEN 1
+            ELSE store_order_rate_limits.request_count + 1
+          END,
+          window_started_at = CASE
+            WHEN store_order_rate_limits.window_started_at < now() - interval '1 hour' THEN now()
+            ELSE store_order_rate_limits.window_started_at
+          END
+        RETURNING request_count
+      `)
+      if (Number(limit?.request_count ?? 0) > 5) {
+        return { ok: false, error: 'وصلتنا عدة محاولات طلب خلال وقت قصير. حاولي بعد ساعة أو تواصلي معنا للمساعدة.' }
+      }
+    }
     const items = (input.items ?? []).map((item) => ({
       modelId: Number(item.modelId), color: clean(item.color, 60), quantity: Number(item.quantity),
     }))
