@@ -35,7 +35,7 @@ export type ModelWithColors = Awaited<ReturnType<typeof getModels>>[number]
 export async function getCouriers(): Promise<CourierPublic[]> {
   const rows = await db.select().from(couriers).orderBy(asc(couriers.id))
   return rows.map(({ apiKeyEncrypted, secretTokenEncrypted, integrationKey, ...courier }) => ({
-    id: courier.id, name: courier.name, phone: courier.phone,
+    id: courier.id, name: courier.name, phone: courier.phone, integrationKey,
     feeWestBank: courier.feeWestBank, feeJerusalem: courier.feeJerusalem,
     feeInside: courier.feeInside, active: courier.active, createdAt: courier.createdAt,
     apiBaseUrl: courier.apiBaseUrl, apiEnabled: courier.apiEnabled,
