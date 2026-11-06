@@ -13,6 +13,7 @@ export async function submitStoreOrder(input: {
   customerName: string
   phone: string
   city: string
+  area: string
   region: string
   address: string
   paymentMethod: 'cod' | 'prepaid'
@@ -23,10 +24,11 @@ export async function submitStoreOrder(input: {
     const customerName = clean(input.customerName, 120)
     const phone = clean(input.phone, 30)
     const city = clean(input.city, 80)
+    const area = clean(input.area, 100)
     const address = clean(input.address, 300)
     const region = clean(input.region, 20)
     const paymentMethod = input.paymentMethod
-    if (!customerName || !/^[0-9+\-\s]{7,20}$/.test(phone) || !city || !address || !isRegion(region)) {
+    if (!customerName || !/^[0-9+\-\s]{7,20}$/.test(phone) || !city || !area || !address || !isRegion(region)) {
       return { ok: false, error: 'يرجى تعبئة الاسم والهاتف والمدينة والعنوان واختيار منطقة التوصيل بشكل صحيح.' }
     }
     if (paymentMethod !== 'cod' && paymentMethod !== 'prepaid') return { ok: false, error: 'طريقة الدفع غير صحيحة.' }
@@ -66,7 +68,7 @@ export async function submitStoreOrder(input: {
       const shippingFee = REGIONS[region as keyof typeof REGIONS].fee
       const total = itemsTotal + shippingFee
       const [order] = await tx.insert(orders).values({
-        customerName, phone, region, city, address, itemsTotal, shippingFee, total, costTotal,
+        customerName, phone, region, city, area, address, itemsTotal, shippingFee, total, costTotal,
         paymentMethod, amountPaid: 0,
         paymentStatus: paymentMethod === 'cod' ? 'unpaid' : 'pending_review',
         paymentReference: clean(input.paymentReference, 120) || null,
