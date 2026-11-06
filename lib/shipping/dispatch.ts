@@ -98,7 +98,7 @@ export async function dispatchShipment(orderId: number) {
 }
 
 export function normalizeCarrierStatus(value: unknown): 'preparing' | 'shipped' | 'delivered' | 'returned' | null {
-  const status = String(value ?? '').trim().toLowerCase().replace(/[\\s-]+/g, '_')
+  const status = String(value ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_')
   if (['pending', 'created', 'preparing', 'new'].includes(status)) return 'preparing'
   if (['shipped', 'in_transit', 'intransit', 'out_for_delivery', 'picked_up', 'arriving', 'on_the_way', 'قيد_التوصيل', 'قيد_الوصول', 'قيدوصول', 'في_الطريق'].includes(status)) return 'shipped'
   if (['delivered', 'completed', 'received', 'تم_التسليم', 'تم_التوصيل'].includes(status)) return 'delivered'
