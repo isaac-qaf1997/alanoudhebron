@@ -185,6 +185,7 @@ type CourierInput = {
   feeInside: number
   active?: boolean
   integrationKey?: string
+  apiEnabled?: boolean
 }
 
 function courierValues(input: CourierInput) {
@@ -198,6 +199,8 @@ function courierValues(input: CourierInput) {
     feeInside: amount(input.feeInside),
     active: input.active ?? true,
     integrationKey: text(input.integrationKey, 50).toLowerCase().replace(/[^a-z0-9_-]/g, '') || null,
+    apiEnabled: input.apiEnabled ?? false,
+    sendOnOrderCreate: false,
   }
 }
 
