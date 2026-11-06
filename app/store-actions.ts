@@ -50,7 +50,7 @@ export async function submitStoreOrder(input: {
     const ip = forwarded || realIp
     const buckets = [
       ...(ip ? [`ip:${createHash('sha256').update(ip).digest('hex')}`] : []),
-      `phone:${createHash('sha256').update(phone.replace(/\\D/g, '')).digest('hex')}`,
+      `phone:${createHash('sha256').update(phone.replace(/\D/g, '')).digest('hex')}`,
     ]
     for (const bucket of buckets) {
       const limitResult = await db.execute<{ request_count: number }>(sql`
