@@ -20,6 +20,7 @@ export async function submitStoreOrder(input: {
   address: string
   paymentMethod: 'cod' | 'prepaid'
   paymentReference?: string
+  checkoutRequestKey: string
   items: { modelId: number; color: string; quantity: number }[]
 }): Promise<StoreOrderResult> {
   try {
@@ -34,6 +35,13 @@ export async function submitStoreOrder(input: {
       return { ok: false, error: 'يرجى تعبئة الاسم والهاتف والمدينة والعنوان واختيار منطقة التوصيل بشكل صحيح.' }
     }
     if (paymentMethod !== 'cod') return { ok: false, error: 'الدفع المسبق غير متاح حالياً. اختاري الدفع عند الاستلام.' }
+    const checkoutRequestKey = clean(input.checkoutRequestKey, 36)
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(checkoutRequestKey)) {
+      return { ok: false, error: 'تعذر التحقق من الطلب. حدّثي الصفحة وحاولي مرة أخرى.' }
+    }
+    // A retry with the same key returns the original order without touching stock or rate limits.
+    const [existingOrder] = await db.select({ id: orders.id }).from(orders).where(eq(orders.checkoutRequestKey, checkoutRequestKey)).limit(1)
+    if (existingOrder) return { ok: true, orderId: existingOrder.id }
 
     // Throttle both the originating IP (when supplied by the hosting proxy) and phone number.
     const requestHeaders = await headers()
@@ -103,6 +111,7 @@ export async function submitStoreOrder(input: {
         paymentMethod, amountPaid: 0,
         paymentStatus: paymentMethod === 'cod' ? 'unpaid' : 'pending_review',
         paymentReference: null,
+        checkoutRequestKey,
         notes: 'طلب من المتجر الإلكتروني',
       }).returning({ id: orders.id })
       await tx.insert(orderItems).values(orderLines.map(({ colorId, ...line }) => ({ ...line, orderId: order.id })))
@@ -110,6 +119,12 @@ export async function submitStoreOrder(input: {
     })
     return { ok: true, orderId }
   } catch (error) {
+    // If two identical submissions race, the unique index lets only one create an order.
+    const key = clean(input.checkoutRequestKey, 36)
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(key)) {
+      const [existingOrder] = await db.select({ id: orders.id }).from(orders).where(eq(orders.checkoutRequestKey, key)).limit(1)
+      if (existingOrder) return { ok: true, orderId: existingOrder.id }
+    }
     const message = error instanceof Error ? error.message : ''
     return { ok: false, error: message || 'تعذر إتمام الطلب حالياً. حاولي مرة أخرى.' }
   }
