@@ -11,12 +11,14 @@ import { Panel } from '@/components/ui/panel'
 import { formatMoney, isDateString, localDateString, monthStart } from '@/lib/format'
 import { getCouriers, getModels, getOrdersInRange } from '@/lib/queries'
 import { computeStats } from '@/lib/stats'
+import { requireRole } from '@/lib/auth/session'
 
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams: Promise<{ from?: string; to?: string }>
 }) {
+  await requireRole('admin')
   const params = await searchParams
   const today = localDateString()
   const from = isDateString(params.from) ? params.from : monthStart(today)

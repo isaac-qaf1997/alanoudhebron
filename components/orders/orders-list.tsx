@@ -6,6 +6,7 @@ import { OrderCard } from '@/components/orders/order-card'
 import { Input, Select } from '@/components/ui/field'
 import { EmptyState, Panel } from '@/components/ui/panel'
 import { REGIONS, REGION_KEYS, STATUSES, STATUS_KEYS } from '@/lib/constants'
+import type { CourierPublic } from '@/lib/db/schema'
 import type { OrderDisplay } from '@/lib/order-display'
 
 export function OrdersList({ orders, isAdmin }: { orders: OrderDisplay[]; isAdmin: boolean }) {

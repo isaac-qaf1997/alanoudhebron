@@ -56,10 +56,8 @@ export function ShipmentsBoard({ orders, couriers }: { orders: OrderFull[]; cour
     setError(null)
     startTransition(async () => {
       const result = await bulkShip(selectedVisible)
-      if (result.ok) {
-        setSelected([])
-        setError(result.warning ?? null)
-      } else setError(result.error)
+      if (result.ok) setSelected([])
+      else setError(result.error)
     })
   }
 

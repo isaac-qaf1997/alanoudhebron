@@ -120,11 +120,6 @@ export function OrderCard({ order, isAdmin }: { order: OrderDisplay; isAdmin: bo
           ) : null}
         </div>
       </footer>
-      {order.shippingError ? (
-        <p className="rounded-lg border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
-          تعذر مزامنة الشحنة: {order.shippingError}
-        </p>
-      ) : null}
       {error ? (
         <p role="alert" className="text-sm text-destructive">
           {error}

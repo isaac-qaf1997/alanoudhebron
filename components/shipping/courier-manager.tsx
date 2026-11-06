@@ -3,7 +3,6 @@
 import { Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useId, useState, useTransition } from 'react'
 import { createCourier, deleteCourier, updateCourier } from '@/app/actions'
-import { CourierIntegrationSettings } from '@/components/shipping/courier-integration-settings'
 import { Button } from '@/components/ui/button'
 import { Field, Input } from '@/components/ui/field'
 import { EmptyState, Panel } from '@/components/ui/panel'
@@ -11,7 +10,7 @@ import { REGIONS } from '@/lib/constants'
 import type { CourierPublic } from '@/lib/db/schema'
 import { formatMoney } from '@/lib/format'
 
-const empty = { name: '', phone: '', feeWestBank: 15, feeJerusalem: 25, feeInside: 60, active: true }
+const empty = { name: '', phone: '', feeWestBank: 15, feeJerusalem: 25, feeInside: 60, active: true, integrationKey: '', apiEnabled: false }
 
 export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
   const uid = useId()
@@ -29,6 +28,8 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
       feeJerusalem: c.feeJerusalem,
       feeInside: c.feeInside,
       active: c.active,
+      integrationKey: c.integrationKey ?? '',
+      apiEnabled: c.apiEnabled,
     })
   }
 
@@ -94,11 +95,25 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
               onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
             />
           </Field>
+          <Field label="مفتاح الربط البرمجي (اختياري)" htmlFor={`${uid}-integration`}>
+            <Input
+              id={`${uid}-integration`}
+              dir="ltr"
+              placeholder="مثال: courier_a"
+              value={form.integrationKey}
+              onChange={(e) => setForm((f) => ({ ...f, integrationKey: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '') }))}
+            />
+            <p className="text-xs text-muted-foreground">يُستخدم لربط الشركة بإعدادات API الآمنة على الخادم. لا تضعي كلمة المرور أو مفتاح API هنا.</p>
+          </Field>
           <div className="grid grid-cols-3 gap-2">
             {feeField('feeWestBank', 'الضفة')}
             {feeField('feeJerusalem', 'القدس')}
             {feeField('feeInside', 'الداخل')}
           </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" className="size-4 accent-primary" checked={form.apiEnabled} onChange={(e) => setForm((f) => ({ ...f, apiEnabled: e.target.checked }))} />
+            تفعيل الربط البرمجي (API) بعد تجهيز الرمز السري
+          </label>
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -153,6 +168,7 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
                     <p className="text-xs text-muted-foreground" dir="ltr">
                       {c.phone || '—'}
                     </p>
+                    {c.integrationKey ? <p className="mt-1 text-xs text-muted-foreground" dir="ltr">API: {c.integrationKey} · {c.apiEnabled ? 'مفعّل' : 'متوقف'}</p> : null}
                   </div>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon-sm" onClick={() => edit(c)} aria-label={`تعديل ${c.name}`}>
@@ -181,7 +197,6 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
                     </div>
                   ))}
                 </dl>
-                <CourierIntegrationSettings courier={c} />
               </li>
             ))}
           </ul>

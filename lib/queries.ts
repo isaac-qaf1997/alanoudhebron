@@ -20,7 +20,13 @@ export async function getModels() {
     db.select().from(modelColors).orderBy(asc(modelColors.id)),
   ])
   return modelRows.map((model) => ({
-    ...model,
+    id: model.id,
+    name: model.name,
+    sku: model.sku,
+    price: model.price,
+    cost: model.cost,
+    imageUrl: model.imageUrl,
+    createdAt: model.createdAt,
     colors: colorRows.filter((c) => c.modelId === model.id),
   }))
 }
@@ -28,24 +34,15 @@ export async function getModels() {
 export type ModelWithColors = Awaited<ReturnType<typeof getModels>>[number]
 
 export async function getCouriers(): Promise<CourierPublic[]> {
-  return db
-    .select({
-      id: couriers.id,
-      name: couriers.name,
-      phone: couriers.phone,
-      feeWestBank: couriers.feeWestBank,
-      feeJerusalem: couriers.feeJerusalem,
-      feeInside: couriers.feeInside,
-      active: couriers.active,
-      createdAt: couriers.createdAt,
-      apiBaseUrl: couriers.apiBaseUrl,
-      apiEnabled: couriers.apiEnabled,
-      sendOnOrderCreate: couriers.sendOnOrderCreate,
-      hasApiKey: sql<boolean>`${couriers.apiKeyEncrypted} is not null`,
-      hasSecretToken: sql<boolean>`${couriers.secretTokenEncrypted} is not null`,
-    })
-    .from(couriers)
-    .orderBy(asc(couriers.id))
+  const rows = await db.select().from(couriers).orderBy(asc(couriers.id))
+  return rows.map(({ apiKeyEncrypted, secretTokenEncrypted, integrationKey, ...courier }) => ({
+    id: courier.id, name: courier.name, phone: courier.phone, integrationKey,
+    feeWestBank: courier.feeWestBank, feeJerusalem: courier.feeJerusalem,
+    feeInside: courier.feeInside, active: courier.active, createdAt: courier.createdAt,
+    apiBaseUrl: courier.apiBaseUrl, apiEnabled: courier.apiEnabled,
+    sendOnOrderCreate: courier.sendOnOrderCreate,
+    hasApiKey: Boolean(apiKeyEncrypted), hasSecretToken: Boolean(secretTokenEncrypted),
+  }))
 }
 
 async function hydrateOrders(rows: Order[]) {

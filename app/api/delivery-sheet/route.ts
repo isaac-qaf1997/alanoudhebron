@@ -1,15 +1,15 @@
 import ExcelJS from 'exceljs'
+import { NextResponse } from 'next/server'
+import { authorizeRole } from '@/lib/auth/session'
 import { REGIONS, STATUSES, isRegion, isStatus } from '@/lib/constants'
 import { isDateString, localDateString } from '@/lib/format'
 import { getDeliverySheet } from '@/lib/queries'
-import { authorizeRole } from '@/lib/auth/session'
-import { NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
 
 export async function GET(request: Request) {
-  const user = await authorizeRole('staff')
-  if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
+  const user = await authorizeRole('admin')
+  if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 })
 
   const url = new URL(request.url)
   const dateParam = url.searchParams.get('date')
@@ -34,10 +34,8 @@ export async function GET(request: Request) {
     { header: 'شركة التوصيل', key: 'courier', width: 16 },
     { header: 'رقم التتبع', key: 'tracking', width: 16 },
     { header: 'المبلغ المطلوب', key: 'total', width: 14 },
-    ...(user.role === 'admin' ? [
-      { header: 'رسوم الشركة', key: 'fee', width: 12 },
-      { header: 'الصافي', key: 'net', width: 12 },
-    ] : []),
+    { header: 'رسوم الشركة', key: 'fee', width: 12 },
+    { header: 'الصافي', key: 'net', width: 12 },
     { header: 'الحالة', key: 'status', width: 12 },
     { header: 'ملاحظات', key: 'notes', width: 24 },
   ]
@@ -57,7 +55,8 @@ export async function GET(request: Request) {
       courier: o.courierName ?? '',
       tracking: o.trackingNumber ?? '',
       total: o.total,
-      ...(user.role === 'admin' ? { fee: o.courierFee, net: o.total - o.courierFee } : {}),
+      fee: o.courierFee,
+      net: o.total - o.courierFee,
       status: isStatus(o.status) ? STATUSES[o.status].label : o.status,
       notes: o.notes ?? '',
     })
@@ -67,10 +66,8 @@ export async function GET(request: Request) {
     id: 'المجموع',
     pieces: rows.reduce((s, o) => s + o.items.reduce((is, i) => is + i.quantity, 0), 0),
     total: rows.reduce((s, o) => s + o.total, 0),
-    ...(user.role === 'admin' ? {
-      fee: rows.reduce((s, o) => s + o.courierFee, 0),
-      net: rows.reduce((s, o) => s + o.total - o.courierFee, 0),
-    } : {}),
+    fee: rows.reduce((s, o) => s + o.courierFee, 0),
+    net: rows.reduce((s, o) => s + o.total - o.courierFee, 0),
   })
   totalRow.font = { bold: true }
 
@@ -80,7 +77,7 @@ export async function GET(request: Request) {
   sheet.eachRow((row) => {
     row.alignment = { vertical: 'top', horizontal: 'right', wrapText: true, readingOrder: 'rtl' }
   })
-  for (const key of user.role === 'admin' ? ['total', 'fee', 'net'] : ['total']) sheet.getColumn(key).numFmt = '#,##0.00 "₪"'
+  for (const key of ['total', 'fee', 'net']) sheet.getColumn(key).numFmt = '#,##0.00 "₪"'
 
   const buffer = await workbook.xlsx.writeBuffer()
   const filename = `delivery-sheet-${date}.xlsx`

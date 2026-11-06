@@ -50,6 +50,7 @@ export const couriers = pgTable('couriers', {
   feeJerusalem: money('fee_jerusalem').notNull().default(25),
   feeInside: money('fee_inside').notNull().default(60),
   active: boolean('active').notNull().default(true),
+  integrationKey: text('integration_key'),
   apiBaseUrl: text('api_base_url'),
   apiKeyEncrypted: text('api_key_encrypted'),
   secretTokenEncrypted: text('secret_token_encrypted'),
@@ -65,6 +66,7 @@ export const orders = pgTable('orders', {
   region: text('region').notNull(),
   city: text('city').notNull(),
   address: text('address'),
+  area: text('area'),
   courierId: integer('courier_id'),
   trackingNumber: text('tracking_number'),
   status: text('status').notNull().default('preparing'),
@@ -75,14 +77,19 @@ export const orders = pgTable('orders', {
   costTotal: money('cost_total').notNull().default(0),
   courierFee: money('courier_fee').notNull().default(0),
   notes: text('notes'),
+  paymentMethod: text('payment_method').$type<'cod' | 'prepaid'>().notNull().default('cod'),
+  amountPaid: money('amount_paid').notNull().default(0),
+  paymentStatus: text('payment_status').$type<'unpaid' | 'pending_review' | 'paid' | 'partially_paid'>().notNull().default('unpaid'),
+  paymentReference: text('payment_reference'),
+  checkoutRequestKey: text('checkout_request_key'),
   shippedAt: timestamp('shipped_at', { withTimezone: true }),
   deliveredAt: timestamp('delivered_at', { withTimezone: true }),
   externalShipmentId: text('external_shipment_id'),
-  shippingProviderStatus: text('shipping_provider_status'),
-  shippingSyncedAt: timestamp('shipping_synced_at', { withTimezone: true }),
-  shippingError: text('shipping_error'),
+  syncStatus: text('sync_status').notNull().default('not_configured'),
+  syncError: text('sync_error'),
+  lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-})
+}, (table) => ({ checkoutRequestUnique: uniqueIndex('orders_checkout_request_key_uq').on(table.checkoutRequestKey).where(sql`${table.checkoutRequestKey} IS NOT NULL`) }))
 
 export const orderItems = pgTable('order_items', {
   id: serial('id').primaryKey(),
@@ -117,14 +124,17 @@ export const shippingWebhookEvents = pgTable(
   'shipping_webhook_events',
   {
     id: serial('id').primaryKey(),
+    providerKey: text('provider_key').notNull(),
     eventId: text('event_id').notNull(),
-    courierId: integer('courier_id').notNull(),
-    trackingNumber: text('tracking_number').notNull(),
-    providerStatus: text('provider_status').notNull(),
-    payload: jsonb('payload').$type<Record<string, unknown>>(),
+    orderId: integer('order_id'),
+    eventType: text('event_type').notNull(),
+    payload: text('payload').notNull(),
     receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => ({ eventIdUnique: uniqueIndex('shipping_webhook_events_event_id_uq').on(table.eventId) }),
+  (table) => ({
+    providerEventUnique: uniqueIndex('shipping_webhook_events_provider_event_unique').on(table.providerKey, table.eventId),
+    orderIndex: index('shipping_webhook_events_order_idx').on(table.orderId),
+  }),
 )
 
 export type Model = typeof models.$inferSelect
@@ -139,6 +149,7 @@ export type CourierPublic = Pick<
   | 'feeJerusalem'
   | 'feeInside'
   | 'active'
+  | 'integrationKey'
   | 'createdAt'
   | 'apiBaseUrl'
   | 'apiEnabled'
@@ -147,3 +158,13 @@ export type CourierPublic = Pick<
 export type Order = typeof orders.$inferSelect
 export type OrderItem = typeof orderItems.$inferSelect
 export type OrderExchange = typeof orderExchanges.$inferSelect
+
+
+export const storeOrderRateLimits = pgTable(
+  'store_order_rate_limits',
+  {
+    bucketKey: text('bucket_key').primaryKey(),
+    windowStartedAt: timestamp('window_started_at', { withTimezone: true }).notNull().defaultNow(),
+    requestCount: integer('request_count').notNull().default(1),
+  },
+)

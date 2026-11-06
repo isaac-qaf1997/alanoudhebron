@@ -1,11 +1,9 @@
 'use server'
 
-import { eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
-import { db } from '@/lib/db'
-import { encryptShippingSecret, verifyShippingSettingsPassword } from '@/lib/shipping/credentials'
 import { authorizeRole, type CurrentUser } from '@/lib/auth/session'
-import { sendOrderToCourier } from '@/lib/shipping/service'
+import { db } from '@/lib/db'
 import {
   couriers,
   modelColors,
@@ -186,6 +184,8 @@ type CourierInput = {
   feeJerusalem: number
   feeInside: number
   active?: boolean
+  integrationKey?: string
+  apiEnabled?: boolean
 }
 
 function courierValues(input: CourierInput) {
@@ -198,80 +198,32 @@ function courierValues(input: CourierInput) {
     feeJerusalem: amount(input.feeJerusalem),
     feeInside: amount(input.feeInside),
     active: input.active ?? true,
+    integrationKey: text(input.integrationKey, 50).toLowerCase().replace(/[^a-z0-9_-]/g, '') || null,
+    apiEnabled: input.apiEnabled ?? false,
+    sendOnOrderCreate: false,
   }
 }
 
 export async function createCourier(input: CourierInput) {
   return run(async () => {
-    await db.insert(couriers).values(courierValues(input))
+    const values = courierValues(input)
+    if (values.integrationKey) {
+      const [duplicate] = await db.select({ id: couriers.id }).from(couriers).where(eq(couriers.integrationKey, values.integrationKey)).limit(1)
+      if (duplicate) throw new UserError('مفتاح الربط مستخدم لشركة أخرى؛ اختاري مفتاحاً مختلفاً')
+    }
+    await db.insert(couriers).values(values)
   })
 }
 
 export async function updateCourier(courierId: number, input: CourierInput) {
   return run(async () => {
-    await db.update(couriers).set(courierValues(input)).where(eq(couriers.id, id(courierId)))
-  })
-}
-
-export async function saveCourierIntegrationSettings(
-  courierId: number,
-  input: {
-    baseUrl: string
-    apiKey?: string
-    secretToken?: string
-    enabled: boolean
-    sendOnOrderCreate: boolean
-    adminPassword: string
-  },
-) {
-  return run(async () => {
-    let passwordValid = false
-    try {
-      passwordValid = verifyShippingSettingsPassword(text(input.adminPassword, 500))
-    } catch {
-      throw new UserError('أضيفي SHIPPING_SETTINGS_PASSWORD في إعدادات Vercel أولاً')
-    }
-    if (!passwordValid) throw new UserError('رمز إدارة إعدادات الربط غير صحيح')
-
     const cid = id(courierId)
-    const [current] = await db.select().from(couriers).where(eq(couriers.id, cid)).limit(1)
-    if (!current) throw new UserError('شركة التوصيل غير موجودة')
-
-    const baseUrl = text(input.baseUrl, 500)
-    if (input.enabled) {
-      let parsed: URL
-      try {
-        parsed = new URL(baseUrl)
-      } catch {
-        throw new UserError('رابط Base URL غير صالح')
-      }
-      if (parsed.protocol !== 'https:' || parsed.username || parsed.password) {
-        throw new UserError('يجب أن يكون Base URL رابط HTTPS صالحاً')
-      }
-      if (!(input.apiKey?.trim() || current.apiKeyEncrypted)) {
-        throw new UserError('أدخلي API Key قبل تفعيل الربط')
-      }
-      if (!(input.secretToken?.trim() || current.secretTokenEncrypted)) {
-        throw new UserError('أدخلي Secret Token قبل تفعيل الربط')
-      }
-      if (!process.env.SHIPPING_CREDENTIALS_ENCRYPTION_KEY) {
-        throw new UserError('أضيفي SHIPPING_CREDENTIALS_ENCRYPTION_KEY في إعدادات Vercel أولاً')
-      }
+    const values = courierValues(input)
+    if (values.integrationKey) {
+      const [duplicate] = await db.select({ id: couriers.id }).from(couriers).where(and(eq(couriers.integrationKey, values.integrationKey), sql`${couriers.id} <> ${cid}`)).limit(1)
+      if (duplicate) throw new UserError('مفتاح الربط مستخدم لشركة أخرى؛ اختاري مفتاحاً مختلفاً')
     }
-
-    const nextApiKey = input.apiKey?.trim()
-    const nextSecret = input.secretToken?.trim()
-    if ((nextApiKey || nextSecret) && !process.env.SHIPPING_CREDENTIALS_ENCRYPTION_KEY) {
-      throw new UserError('أضيفي SHIPPING_CREDENTIALS_ENCRYPTION_KEY في إعدادات Vercel أولاً')
-    }
-    const update: Partial<typeof couriers.$inferInsert> = {
-      apiBaseUrl: baseUrl || null,
-      apiEnabled: Boolean(input.enabled),
-      sendOnOrderCreate: Boolean(input.sendOnOrderCreate),
-    }
-    if (nextApiKey) update.apiKeyEncrypted = encryptShippingSecret(nextApiKey)
-    if (nextSecret) update.secretTokenEncrypted = encryptShippingSecret(nextSecret)
-    await db.update(couriers).set(update).where(eq(couriers.id, cid))
+    await db.update(couriers).set(values).where(eq(couriers.id, cid))
   })
 }
 
@@ -362,8 +314,10 @@ export async function createOrder(input: OrderInput) {
     if (totalQty > MAX_QTY) throw new UserError(`الحد الأقصى ${MAX_QTY} قطعة في الطلب الواحد`)
 
     const courierId = input.courierId ? id(input.courierId) : null
+    let createdOrderId: number | null = null
+    let shouldAutoDispatch = false
 
-    const createdOrderId = await db.transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       const modelIds = [
         ...new Set([
           ...items.map((i) => i.modelId),
@@ -372,10 +326,11 @@ export async function createOrder(input: OrderInput) {
       ]
       const [modelRows, colorRows, courierRows] = await Promise.all([
         tx.select().from(models).where(inArray(models.id, modelIds)),
-        tx.select().from(modelColors).where(inArray(modelColors.modelId, modelIds)),
+        tx.select().from(modelColors).where(inArray(modelColors.modelId, modelIds)).for('update'),
         courierId ? tx.select().from(couriers).where(eq(couriers.id, courierId)) : Promise.resolve([]),
       ])
       if (courierId && courierRows.length === 0) throw new UserError('شركة التوصيل غير موجودة')
+      shouldAutoDispatch = Boolean(courierRows[0]?.active && courierRows[0]?.apiEnabled && courierRows[0]?.sendOnOrderCreate)
 
       const getModel = (mid: number) => {
         const model = modelRows.find((m) => m.id === mid)
@@ -475,47 +430,26 @@ export async function createOrder(input: OrderInput) {
           courierFee: courierFeeFor(courierRows[0], region),
         })
         .returning({ id: orders.id })
+      createdOrderId = order.id
 
       if (itemRows.length) await tx.insert(orderItems).values(itemRows.map((r) => ({ ...r, orderId: order.id })))
       if (exchangeRows.length) {
         await tx.insert(orderExchanges).values(exchangeRows.map((r) => ({ ...r, orderId: order.id })))
       }
-      return order.id
     })
 
-    if (courierId) {
-      const [selectedCourier] = await db.select().from(couriers).where(eq(couriers.id, courierId)).limit(1)
-      if (selectedCourier?.apiEnabled && selectedCourier.sendOnOrderCreate) {
-        try {
-          await sendOrderToCourier(createdOrderId)
-          await db.update(orders).set({ status: 'shipped', shippedAt: new Date() }).where(eq(orders.id, createdOrderId))
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'فشل إرسال الطلب لشركة التوصيل'
-          return `تم حفظ الطلب، لكن لم يتم إرساله للشركة: ${message}`
-        }
-      }
+    // Automatic dispatch is opt-in per courier; selecting a courier alone must never create a shipment.
+    if (createdOrderId && courierId && shouldAutoDispatch) {
+      const { dispatchShipment } = await import('@/lib/shipping/dispatch')
+      await dispatchShipment(createdOrderId)
     }
   }, 'staff')
 }
 
 export async function updateOrderStatus(orderId: number, status: string) {
-  return run(async (user) => {
+  return run(async () => {
     if (!isStatus(status)) throw new UserError('حالة غير صالحة')
     const oid = id(orderId)
-    const [before] = await db.select().from(orders).where(eq(orders.id, oid)).limit(1)
-    if (!before) throw new UserError('الطلب غير موجود')
-    if (user.role === 'staff' && status === 'shipped' && before.status !== 'shipped' && !before.trackingNumber) {
-      throw new UserError('إرسال الشحنة يحتاج صلاحية المدير. يمكن للموظف متابعة الطلب بعد إدخال رقم التتبع.')
-    }
-
-    if (status === 'shipped' && before.status !== 'shipped' && before.courierId && !before.trackingNumber) {
-      try {
-        await sendOrderToCourier(oid)
-      } catch (error) {
-        throw new UserError(error instanceof Error ? error.message : 'تعذر إنشاء الطرد لدى شركة التوصيل')
-      }
-    }
-
     await db.transaction(async (tx) => {
       const [current] = await tx.select().from(orders).where(eq(orders.id, oid))
       if (!current) throw new UserError('الطلب غير موجود')
@@ -558,40 +492,50 @@ export async function updateShipping(
         courierId,
         region,
         trackingNumber: text(input.trackingNumber, 80) || null,
+        externalShipmentId: courierId === current.courierId ? current.externalShipmentId : null,
+        syncStatus: courierId === current.courierId ? current.syncStatus : 'not_configured',
+        syncError: courierId === current.courierId ? current.syncError : null,
         shippingFee,
         total: Math.max(current.itemsTotal + shippingFee + current.exchangeDiff, 0),
         courierFee: courierFeeFor(courier, region),
-        shippingError: null,
       })
       .where(eq(orders.id, oid))
-  })
+    if (courierId && courier && courier.active && courier.apiEnabled && courier.sendOnOrderCreate && (courierId !== current.courierId || !['sent', 'synced'].includes(current.syncStatus))) {
+      const { dispatchShipment } = await import('@/lib/shipping/dispatch')
+      await dispatchShipment(oid)
+    }
+  }, 'staff')
+}
+
+export async function retryShippingSync(orderId: number) {
+  return run(async () => {
+    const oid = id(orderId)
+    const [order] = await db.select().from(orders).where(eq(orders.id, oid))
+    if (!order) throw new UserError('الطلب غير موجود')
+    if (!order.courierId) throw new UserError('عيّني شركة توصيل أولاً')
+    if (order.syncStatus !== 'failed') throw new UserError('إعادة المحاولة متاحة للشحنات التي فشل إرسالها فقط')
+    const { dispatchShipment } = await import('@/lib/shipping/dispatch')
+    await dispatchShipment(oid)
+    const [updated] = await db.select().from(orders).where(eq(orders.id, oid))
+    if (updated?.syncStatus === 'failed') throw new UserError(updated.syncError || 'تعذر إرسال الشحنة')
+  }, 'staff')
 }
 
 export async function bulkShip(orderIds: number[]) {
   return run(async () => {
     const ids = [...new Set(orderIds.map(id))]
     if (ids.length === 0) return
-    const failures: string[] = []
-    for (const orderId of ids) {
-      const [current] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1)
-      if (!current || current.status !== 'preparing') continue
-      if (!current.courierId) {
-        failures.push(`#${orderId}: لم تُحدد شركة التوصيل`)
-        continue
-      }
-      try {
-        if (!current.trackingNumber) await sendOrderToCourier(orderId)
-        await db
-          .update(orders)
-          .set({ status: 'shipped', shippedAt: sql`coalesce(${orders.shippedAt}, now())` })
-          .where(eq(orders.id, orderId))
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'فشل إنشاء الشحنة'
-        failures.push(`#${orderId}: ${message}`)
-      }
-    }
-    if (failures.length) return `لم يتم إرسال بعض الطلبات:\n${failures.join('\n')}`
-  })
+    const eligible = await db.select({ id: orders.id }).from(orders).where(
+      sql`${inArray(orders.id, ids)} and ${orders.status} = 'preparing' and ${orders.courierId} is not null`,
+    )
+    await db
+      .update(orders)
+      .set({ status: 'shipped', shippedAt: sql`coalesce(${orders.shippedAt}, now())` })
+      .where(sql`${inArray(orders.id, ids)} and ${orders.status} = 'preparing'`)
+    // Dispatch is best-effort: orders remain saved even if a carrier API is temporarily unavailable.
+    const { dispatchShipment } = await import('@/lib/shipping/dispatch')
+    for (const order of eligible) await dispatchShipment(order.id)
+  }, 'staff')
 }
 
 export async function deleteOrder(orderId: number) {
