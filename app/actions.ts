@@ -2,6 +2,7 @@
 
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { authorizeRole, type CurrentUser } from '@/lib/auth/session'
 import { db } from '@/lib/db'
 import {
   couriers,
@@ -20,7 +21,7 @@ import {
   type StatusKey,
 } from '@/lib/constants'
 
-export type ActionResult = { ok: true } | { ok: false; error: string }
+export type ActionResult = { ok: true; warning?: string } | { ok: false; error: string }
 
 class UserError extends Error {}
 
@@ -62,11 +63,16 @@ function id(value: unknown) {
   return n
 }
 
-async function run(fn: () => Promise<void>): Promise<ActionResult> {
+async function run(
+  fn: (user: CurrentUser) => Promise<void | string>,
+  minimumRole: 'admin' | 'staff' = 'admin',
+): Promise<ActionResult> {
   try {
-    await fn()
+    const user = await authorizeRole(minimumRole)
+    if (!user) return { ok: false, error: 'انتهت الجلسة أو لا تملكين صلاحية تنفيذ هذه العملية. سجّلي الدخول مجدداً.' }
+    const warning = await fn(user)
     revalidatePath('/', 'layout')
-    return { ok: true }
+    return warning ? { ok: true, warning } : { ok: true }
   } catch (error) {
     if (error instanceof UserError) return { ok: false, error: error.message }
     console.error('[actions]', error)
