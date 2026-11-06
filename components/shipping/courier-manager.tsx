@@ -7,12 +7,12 @@ import { Button } from '@/components/ui/button'
 import { Field, Input } from '@/components/ui/field'
 import { EmptyState, Panel } from '@/components/ui/panel'
 import { REGIONS } from '@/lib/constants'
-import type { Courier } from '@/lib/db/schema'
+import type { CourierPublic } from '@/lib/db/schema'
 import { formatMoney } from '@/lib/format'
 
 const empty = { name: '', phone: '', feeWestBank: 15, feeJerusalem: 25, feeInside: 60, active: true, integrationKey: '' }
 
-export function CourierManager({ couriers }: { couriers: Courier[] }) {
+export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
   const uid = useId()
   const [pending, startTransition] = useTransition()
   const [form, setForm] = useState(empty)
