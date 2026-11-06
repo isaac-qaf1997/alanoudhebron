@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useTransition } from 'react'
 import { Input, Label, Select } from '@/components/ui/field'
+import type { Courier } from '@/lib/db/schema'
 import { cn } from '@/lib/utils'
 
 export function SheetFilters({
@@ -13,7 +14,7 @@ export function SheetFilters({
 }: {
   date: string
   courierId: number | null
-  couriers: { id: number; name: string }[]
+  couriers: Courier[]
   today: string
 }) {
   const router = useRouter()

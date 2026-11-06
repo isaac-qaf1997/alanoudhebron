@@ -3,24 +3,23 @@
 import { Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useId, useState, useTransition } from 'react'
 import { createCourier, deleteCourier, updateCourier } from '@/app/actions'
-import { CourierIntegrationSettings } from '@/components/shipping/courier-integration-settings'
 import { Button } from '@/components/ui/button'
 import { Field, Input } from '@/components/ui/field'
 import { EmptyState, Panel } from '@/components/ui/panel'
 import { REGIONS } from '@/lib/constants'
-import type { CourierPublic } from '@/lib/db/schema'
+import type { Courier } from '@/lib/db/schema'
 import { formatMoney } from '@/lib/format'
 
-const empty = { name: '', phone: '', feeWestBank: 15, feeJerusalem: 25, feeInside: 60, active: true }
+const empty = { name: '', phone: '', feeWestBank: 15, feeJerusalem: 25, feeInside: 60, active: true, integrationKey: '' }
 
-export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
+export function CourierManager({ couriers }: { couriers: Courier[] }) {
   const uid = useId()
   const [pending, startTransition] = useTransition()
   const [form, setForm] = useState(empty)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  function edit(c: CourierPublic) {
+  function edit(c: Courier) {
     setEditingId(c.id)
     setForm({
       name: c.name,
@@ -29,6 +28,7 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
       feeJerusalem: c.feeJerusalem,
       feeInside: c.feeInside,
       active: c.active,
+      integrationKey: c.integrationKey ?? '',
     })
   }
 
@@ -47,7 +47,7 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
     })
   }
 
-  function remove(c: CourierPublic) {
+  function remove(c: Courier) {
     if (!window.confirm(`حذف شركة ${c.name}؟ ستُزال من الطلبات المرتبطة بها.`)) return
     startTransition(async () => {
       const result = await deleteCourier(c.id)
@@ -93,6 +93,16 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
               value={form.phone}
               onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
             />
+          </Field>
+          <Field label="مفتاح الربط البرمجي (اختياري)" htmlFor={`${uid}-integration`}>
+            <Input
+              id={`${uid}-integration`}
+              dir="ltr"
+              placeholder="مثال: courier_a"
+              value={form.integrationKey}
+              onChange={(e) => setForm((f) => ({ ...f, integrationKey: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '') }))}
+            />
+            <p className="text-xs text-muted-foreground">يُستخدم لربط الشركة بإعدادات API الآمنة على الخادم. لا تضعي كلمة المرور أو مفتاح API هنا.</p>
           </Field>
           <div className="grid grid-cols-3 gap-2">
             {feeField('feeWestBank', 'الضفة')}
@@ -153,6 +163,7 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
                     <p className="text-xs text-muted-foreground" dir="ltr">
                       {c.phone || '—'}
                     </p>
+                    {c.integrationKey ? <p className="mt-1 text-xs text-muted-foreground" dir="ltr">API: {c.integrationKey}</p> : null}
                   </div>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon-sm" onClick={() => edit(c)} aria-label={`تعديل ${c.name}`}>
@@ -181,7 +192,6 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
                     </div>
                   ))}
                 </dl>
-                <CourierIntegrationSettings courier={c} />
               </li>
             ))}
           </ul>

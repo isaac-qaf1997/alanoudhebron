@@ -1,12 +1,12 @@
 'use client'
 
-import { Save } from 'lucide-react'
+import { RefreshCw, Save } from 'lucide-react'
 import { useState, useTransition } from 'react'
-import { updateOrderStatus, updateShipping } from '@/app/actions'
+import { retryShippingSync, updateOrderStatus, updateShipping } from '@/app/actions'
 import { Button } from '@/components/ui/button'
 import { Input, Select } from '@/components/ui/field'
 import { REGIONS, REGION_KEYS, STATUSES, STATUS_KEYS } from '@/lib/constants'
-import type { CourierPublic } from '@/lib/db/schema'
+import type { Courier } from '@/lib/db/schema'
 import { formatMoney } from '@/lib/format'
 import type { OrderFull } from '@/lib/queries'
 import { cn } from '@/lib/utils'
@@ -19,7 +19,7 @@ export function ShipmentRow({
   onToggle,
 }: {
   order: OrderFull
-  couriers: CourierPublic[]
+  couriers: Courier[]
   selectable: boolean
   selected: boolean
   onToggle: () => void
@@ -45,6 +45,14 @@ export function ShipmentRow({
         region: draft.region,
         trackingNumber: draft.trackingNumber,
       })
+      if (!result.ok) setError(result.error)
+    })
+  }
+
+  function retrySync() {
+    setError(null)
+    startTransition(async () => {
+      const result = await retryShippingSync(order.id)
       if (!result.ok) setError(result.error)
     })
   }
@@ -117,6 +125,11 @@ export function ShipmentRow({
             onChange={(e) => setDraft((d) => ({ ...d, trackingNumber: e.target.value }))}
             className="h-9 w-32 text-end"
           />
+          {order.externalShipmentId ? <p className="text-[10px] text-muted-foreground" dir="ltr">ID: {order.externalShipmentId}</p> : null}
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {order.syncStatus === 'sent' || order.syncStatus === 'synced' ? 'تم الربط' : order.syncStatus === 'failed' ? 'فشل الإرسال' : order.syncStatus === 'sending' ? 'جارٍ الإرسال' : order.syncStatus === 'not_configured' ? 'غير مربوط' : order.syncStatus}
+          </p>
+          {order.syncError ? <p className="max-w-36 text-[10px] text-destructive">{order.syncError}</p> : null}
         </td>
         <td className="py-2">
           <p className="font-semibold tabular-nums">{formatMoney(order.total)}</p>
@@ -138,6 +151,11 @@ export function ShipmentRow({
           </Select>
         </td>
         <td className="py-2">
+          {order.syncStatus === 'failed' ? (
+            <Button size="icon-sm" variant="ghost" onClick={retrySync} disabled={pending} aria-label={`إعادة إرسال شحنة الطلب ${order.id}`}>
+              <RefreshCw className="size-4" />
+            </Button>
+          ) : null}
           <Button
             size="icon-sm"
             variant={dirty ? 'default' : 'ghost'}
@@ -149,13 +167,6 @@ export function ShipmentRow({
           </Button>
         </td>
       </tr>
-      {order.shippingError ? (
-        <tr>
-          <td colSpan={9} className="pb-2 text-xs text-destructive">
-            تعذر مزامنة الشحنة: {order.shippingError}
-          </td>
-        </tr>
-      ) : null}
       {error ? (
         <tr>
           <td colSpan={9} role="alert" className="pb-2 text-sm text-destructive">

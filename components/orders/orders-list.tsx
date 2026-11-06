@@ -6,9 +6,10 @@ import { OrderCard } from '@/components/orders/order-card'
 import { Input, Select } from '@/components/ui/field'
 import { EmptyState, Panel } from '@/components/ui/panel'
 import { REGIONS, REGION_KEYS, STATUSES, STATUS_KEYS } from '@/lib/constants'
-import type { OrderDisplay } from '@/lib/order-display'
+import type { Courier } from '@/lib/db/schema'
+import type { OrderFull } from '@/lib/queries'
 
-export function OrdersList({ orders, isAdmin }: { orders: OrderDisplay[]; isAdmin: boolean }) {
+export function OrdersList({ orders, couriers }: { orders: OrderFull[]; couriers: Courier[] }) {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('')
   const [region, setRegion] = useState('')
@@ -65,7 +66,7 @@ export function OrdersList({ orders, isAdmin }: { orders: OrderDisplay[]; isAdmi
         <ul className="flex flex-col gap-3">
           {filtered.map((order) => (
             <li key={order.id}>
-              <OrderCard order={order} isAdmin={isAdmin} />
+              <OrderCard order={order} couriers={couriers} />
             </li>
           ))}
         </ul>

@@ -9,7 +9,6 @@ import {
   orderItems,
   orders,
   type Order,
-  type CourierPublic,
 } from '@/lib/db/schema'
 
 const localDate = (column: PgColumn) => sql`(${column} at time zone 'Asia/Hebron')::date`
@@ -27,25 +26,8 @@ export async function getModels() {
 
 export type ModelWithColors = Awaited<ReturnType<typeof getModels>>[number]
 
-export async function getCouriers(): Promise<CourierPublic[]> {
-  return db
-    .select({
-      id: couriers.id,
-      name: couriers.name,
-      phone: couriers.phone,
-      feeWestBank: couriers.feeWestBank,
-      feeJerusalem: couriers.feeJerusalem,
-      feeInside: couriers.feeInside,
-      active: couriers.active,
-      createdAt: couriers.createdAt,
-      apiBaseUrl: couriers.apiBaseUrl,
-      apiEnabled: couriers.apiEnabled,
-      sendOnOrderCreate: couriers.sendOnOrderCreate,
-      hasApiKey: sql<boolean>`${couriers.apiKeyEncrypted} is not null`,
-      hasSecretToken: sql<boolean>`${couriers.secretTokenEncrypted} is not null`,
-    })
-    .from(couriers)
-    .orderBy(asc(couriers.id))
+export async function getCouriers() {
+  return db.select().from(couriers).orderBy(asc(couriers.id))
 }
 
 async function hydrateOrders(rows: Order[]) {
