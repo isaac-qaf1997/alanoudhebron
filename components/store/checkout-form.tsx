@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { submitStoreOrder } from '@/app/store-actions'
+import { REGIONS } from '@/lib/constants'
 
 type Product = { id: number; name: string; price: number; colors: { color: string; stock: number }[] }
 type CartLine = { modelId: number; color: string; quantity: number }
@@ -21,10 +22,12 @@ export default function CheckoutForm({ products }: { products: Product[] }) {
   useEffect(() => {
     try { setItems(JSON.parse(localStorage.getItem(KEY) || '[]')) } catch { setItems([]) }
   }, [])
-  const total = useMemo(() => items.reduce((sum, line) => {
+  const itemsTotal = useMemo(() => items.reduce((sum, line) => {
     const product = products.find(p => p.id === line.modelId)
     return sum + (product?.price || 0) * line.quantity
   }, 0), [items, products])
+  const shippingFee = REGIONS[form.region as keyof typeof REGIONS]?.fee ?? 0
+  const orderTotal = itemsTotal + shippingFee
   function update(field: string, value: string) { setForm(current => ({ ...current, [field]: value })) }
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -68,6 +71,6 @@ export default function CheckoutForm({ products }: { products: Product[] }) {
       {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       <button disabled={busy} className="w-full rounded-full bg-[#765637] px-6 py-4 font-bold text-white disabled:opacity-50">{busy?'جارٍ إرسال الطلب...':'تأكيد الطلب'}</button>
     </div>
-    <aside className="h-fit rounded-3xl bg-white p-6"><h2 className="text-xl font-bold">ملخص الطلب</h2>{items.map((line,i)=>{const p=products.find(x=>x.id===line.modelId);return <div key={i} className="flex justify-between gap-3 border-b py-3 text-sm"><span>{p?.name} · {line.color} × {line.quantity}</span><b>{((p?.price||0)*line.quantity).toFixed(2)} ₪</b></div>})}<div className="flex justify-between pt-5 text-lg font-bold"><span>المجموع قبل التوصيل</span><span>{total.toFixed(2)} ₪</span></div><p className="mt-2 text-xs leading-6 text-stone-500">رسوم التوصيل النهائية تُؤكد حسب المدينة وشركة التوصيل قبل تجهيز الشحنة.</p></aside>
+    <aside className="h-fit rounded-3xl bg-white p-6"><h2 className="text-xl font-bold">ملخص الطلب</h2>{items.map((line,i)=>{const p=products.find(x=>x.id===line.modelId);return <div key={i} className="flex justify-between gap-3 border-b py-3 text-sm"><span>{p?.name} · {line.color} × {line.quantity}</span><b>{((p?.price||0)*line.quantity).toFixed(2)} ₪</b></div>})}<div className="flex justify-between pt-5 text-sm"><span>مجموع المنتجات</span><span>{itemsTotal.toFixed(2)} ₪</span></div><div className="mt-2 flex justify-between text-sm"><span>رسوم التوصيل ({REGIONS[form.region as keyof typeof REGIONS]?.label || "المنطقة المحددة"})</span><span>{shippingFee.toFixed(2)} ₪</span></div><div className="mt-4 flex justify-between border-t pt-4 text-lg font-bold"><span>الإجمالي عند الاستلام</span><span>{orderTotal.toFixed(2)} ₪</span></div><p className="mt-2 text-xs leading-6 text-stone-500">رسوم التوصيل محسوبة حسب منطقة التوصيل المختارة، وقد نؤكد تفاصيل العنوان معك قبل الشحن.</p></aside>
   </form>
 }
