@@ -19,7 +19,7 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  function edit(c: Courier) {
+  function edit(c: CourierPublic) {
     setEditingId(c.id)
     setForm({
       name: c.name,
@@ -47,7 +47,7 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
     })
   }
 
-  function remove(c: Courier) {
+  function remove(c: CourierPublic) {
     if (!window.confirm(`حذف شركة ${c.name}؟ ستُزال من الطلبات المرتبطة بها.`)) return
     startTransition(async () => {
       const result = await deleteCourier(c.id)
