@@ -89,7 +89,7 @@ export const orders = pgTable('orders', {
   syncError: text('sync_error'),
   lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-})
+}, (table) => ({ checkoutRequestUnique: uniqueIndex('orders_checkout_request_key_uq').on(table.checkoutRequestKey).where(sql`${table.checkoutRequestKey} IS NOT NULL`) }))
 
 export const orderItems = pgTable('order_items', {
   id: serial('id').primaryKey(),
