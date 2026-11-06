@@ -31,7 +31,7 @@ export async function submitStoreOrder(input: {
     if (!customerName || !/^[0-9+\-\s]{7,20}$/.test(phone) || !city || !area || !address || !isRegion(region)) {
       return { ok: false, error: 'يرجى تعبئة الاسم والهاتف والمدينة والعنوان واختيار منطقة التوصيل بشكل صحيح.' }
     }
-    if (paymentMethod !== 'cod' && paymentMethod !== 'prepaid') return { ok: false, error: 'طريقة الدفع غير صحيحة.' }
+    if (paymentMethod !== 'cod') return { ok: false, error: 'الدفع المسبق غير متاح حالياً. اختاري الدفع عند الاستلام.' }
     const items = (input.items ?? []).map((item) => ({
       modelId: Number(item.modelId), color: clean(item.color, 60), quantity: Number(item.quantity),
     }))
@@ -71,7 +71,7 @@ export async function submitStoreOrder(input: {
         customerName, phone, region, city, area, address, itemsTotal, shippingFee, total, costTotal,
         paymentMethod, amountPaid: 0,
         paymentStatus: paymentMethod === 'cod' ? 'unpaid' : 'pending_review',
-        paymentReference: clean(input.paymentReference, 120) || null,
+        paymentReference: null,
         notes: 'طلب من المتجر الإلكتروني',
       }).returning({ id: orders.id })
       await tx.insert(orderItems).values(orderLines.map(({ colorId, ...line }) => ({ ...line, orderId: order.id })))
