@@ -35,6 +35,11 @@ export async function dispatchShipment(orderId: number) {
     await db.update(orders).set({ syncStatus: 'not_configured', syncError: 'شركة التوصيل غير مفعّلة' }).where(eq(orders.id, orderId))
     return
   }
+  if (courier?.integrationKey === 'opost') {
+    const { dispatchOpostShipment } = await import('@/lib/shipping/opost')
+    await dispatchOpostShipment(orderId)
+    return
+  }
   if (!courier?.integrationKey) {
     await db.update(orders).set({ syncStatus: 'not_configured', syncError: null }).where(eq(orders.id, orderId))
     return
