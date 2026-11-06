@@ -81,6 +81,7 @@ export const orders = pgTable('orders', {
   amountPaid: money('amount_paid').notNull().default(0),
   paymentStatus: text('payment_status').$type<'unpaid' | 'pending_review' | 'paid' | 'partially_paid'>().notNull().default('unpaid'),
   paymentReference: text('payment_reference'),
+  checkoutRequestKey: text('checkout_request_key'),
   shippedAt: timestamp('shipped_at', { withTimezone: true }),
   deliveredAt: timestamp('delivered_at', { withTimezone: true }),
   externalShipmentId: text('external_shipment_id'),
