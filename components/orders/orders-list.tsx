@@ -6,10 +6,10 @@ import { OrderCard } from '@/components/orders/order-card'
 import { Input, Select } from '@/components/ui/field'
 import { EmptyState, Panel } from '@/components/ui/panel'
 import { REGIONS, REGION_KEYS, STATUSES, STATUS_KEYS } from '@/lib/constants'
-import type { Courier } from '@/lib/db/schema'
+import type { CourierPublic } from '@/lib/db/schema'
 import type { OrderFull } from '@/lib/queries'
 
-export function OrdersList({ orders, couriers }: { orders: OrderFull[]; couriers: Courier[] }) {
+export function OrdersList({ orders, couriers }: { orders: OrderFull[]; couriers: CourierPublic[] }) {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('')
   const [region, setRegion] = useState('')
