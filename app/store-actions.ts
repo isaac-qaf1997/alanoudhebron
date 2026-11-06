@@ -45,7 +45,7 @@ export async function submitStoreOrder(input: {
       `phone:${createHash('sha256').update(phone.replace(/\\D/g, '')).digest('hex')}`,
     ]
     for (const bucket of buckets) {
-      const [limit] = await db.execute<{ request_count: number }>(sql`
+      const limitResult = await db.execute<{ request_count: number }>(sql`
         INSERT INTO store_order_rate_limits (bucket_key, window_started_at, request_count)
         VALUES (${bucket}, now(), 1)
         ON CONFLICT (bucket_key) DO UPDATE SET
@@ -59,7 +59,7 @@ export async function submitStoreOrder(input: {
           END
         RETURNING request_count
       `)
-      if (Number(limit?.request_count ?? 0) > 5) {
+      if (Number(limitResult.rows[0]?.request_count ?? 0) > 5) {
         return { ok: false, error: 'وصلتنا عدة محاولات طلب خلال وقت قصير. حاولي بعد ساعة أو تواصلي معنا للمساعدة.' }
       }
     }
