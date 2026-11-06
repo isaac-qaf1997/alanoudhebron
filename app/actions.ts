@@ -497,7 +497,7 @@ export async function updateShipping(
         courierFee: courierFeeFor(courier, region),
       })
       .where(eq(orders.id, oid))
-    if (courierId && courier.active && courier.apiEnabled && courier.sendOnOrderCreate && (courierId !== current.courierId || !['sent', 'synced'].includes(current.syncStatus))) {
+    if (courierId && courier && courier.active && courier.apiEnabled && courier.sendOnOrderCreate && (courierId !== current.courierId || !['sent', 'synced'].includes(current.syncStatus))) {
       const { dispatchShipment } = await import('@/lib/shipping/dispatch')
       await dispatchShipment(oid)
     }
