@@ -9,6 +9,7 @@ import {
   orderItems,
   orders,
   type Order,
+  type CourierPublic,
 } from '@/lib/db/schema'
 
 const localDate = (column: PgColumn) => sql`(${column} at time zone 'Asia/Hebron')::date`
@@ -19,15 +20,28 @@ export async function getModels() {
     db.select().from(modelColors).orderBy(asc(modelColors.id)),
   ])
   return modelRows.map((model) => ({
-    ...model,
+    id: model.id,
+    name: model.name,
+    sku: model.sku,
+    price: model.price,
+    imageUrl: model.imageUrl,
+    createdAt: model.createdAt,
     colors: colorRows.filter((c) => c.modelId === model.id),
   }))
 }
 
 export type ModelWithColors = Awaited<ReturnType<typeof getModels>>[number]
 
-export async function getCouriers() {
-  return db.select().from(couriers).orderBy(asc(couriers.id))
+export async function getCouriers(): Promise<CourierPublic[]> {
+  const rows = await db.select().from(couriers).orderBy(asc(couriers.id))
+  return rows.map(({ apiKeyEncrypted, secretTokenEncrypted, integrationKey, ...courier }) => ({
+    id: courier.id, name: courier.name, phone: courier.phone,
+    feeWestBank: courier.feeWestBank, feeJerusalem: courier.feeJerusalem,
+    feeInside: courier.feeInside, active: courier.active, createdAt: courier.createdAt,
+    apiBaseUrl: courier.apiBaseUrl, apiEnabled: courier.apiEnabled,
+    sendOnOrderCreate: courier.sendOnOrderCreate,
+    hasApiKey: Boolean(apiKeyEncrypted), hasSecretToken: Boolean(secretTokenEncrypted),
+  }))
 }
 
 async function hydrateOrders(rows: Order[]) {
