@@ -12,7 +12,7 @@ import { formatDateTime, formatMoney } from '@/lib/format'
 import type { OrderFull } from '@/lib/queries'
 import { cn } from '@/lib/utils'
 
-export function OrderCard({ order }: { order: OrderFull; couriers?: Courier[] }) {
+export function OrderCard({ order }: { order: OrderFull; couriers?: CourierPublic[] }) {
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
