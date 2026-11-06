@@ -15,7 +15,7 @@ export default function CheckoutForm({ products }: { products: Product[] }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState<number | null>(null)
-  const [form, setForm] = useState({ customerName: '', phone: '', city: '', region: 'west_bank', address: '', paymentMethod: 'cod' as 'cod' | 'prepaid', paymentReference: '' })
+  const [form, setForm] = useState({ customerName: '', phone: '', city: '', area: '', region: 'west_bank', address: '', paymentMethod: 'cod' as 'cod' | 'prepaid', paymentReference: '' })
   useEffect(() => {
     try { setItems(JSON.parse(localStorage.getItem(KEY) || '[]')) } catch { setItems([]) }
   }, [])
@@ -44,7 +44,7 @@ export default function CheckoutForm({ products }: { products: Product[] }) {
         <label className="block text-sm">المدينة<input required value={form.city} onChange={e=>update('city',e.target.value)} className="mt-2 w-full rounded-xl border p-3"/></label>
         <label className="block text-sm">منطقة التوصيل<select value={form.region} onChange={e=>update('region',e.target.value)} className="mt-2 w-full rounded-xl border p-3"><option value="west_bank">الضفة الغربية</option><option value="jerusalem">القدس</option><option value="inside">الداخل</option></select></label>
       </div>
-      <label className="block text-sm">العنوان بالتفصيل<textarea required value={form.address} onChange={e=>update('address',e.target.value)} className="mt-2 w-full rounded-xl border p-3"/></label>
+      <label className="block text-sm">المنطقة / الحي<input required maxLength={100} value={form.area} onChange={e=>update('area',e.target.value)} className="mt-2 w-full rounded-xl border p-3"/></label>\n      <label className="block text-sm">العنوان بالتفصيل<textarea required value={form.address} onChange={e=>update('address',e.target.value)} className="mt-2 w-full rounded-xl border p-3"/></label>
       <h2 className="pt-3 text-lg font-bold">طريقة الدفع</h2>
       <label className="flex cursor-pointer gap-3 rounded-xl border p-4"><input type="radio" checked={form.paymentMethod==='cod'} onChange={()=>update('paymentMethod','cod')}/> <span><b>الدفع عند الاستلام</b><small className="block text-stone-500">ادفعي عند وصول الطلب.</small></span></label>
       <label className="flex cursor-pointer gap-3 rounded-xl border p-4"><input type="radio" checked={form.paymentMethod==='prepaid'} onChange={()=>update('paymentMethod','prepaid')}/> <span><b>الدفع المسبق المباشر</b><small className="block text-stone-500">سيتم تأكيد وسيلة التحويل وإثبات الدفع معك قبل اعتماد الطلب.</small></span></label>
