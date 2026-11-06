@@ -9,7 +9,7 @@ import { REGIONS, REGION_KEYS, STATUSES, STATUS_KEYS } from '@/lib/constants'
 import type { CourierPublic } from '@/lib/db/schema'
 import type { OrderFull } from '@/lib/queries'
 
-export function OrdersList({ orders, couriers }: { orders: OrderFull[]; couriers: CourierPublic[] }) {
+export function OrdersList({ orders, isAdmin }: { orders: OrderFull[]; isAdmin: boolean }) {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('')
   const [region, setRegion] = useState('')
@@ -66,7 +66,7 @@ export function OrdersList({ orders, couriers }: { orders: OrderFull[]; couriers
         <ul className="flex flex-col gap-3">
           {filtered.map((order) => (
             <li key={order.id}>
-              <OrderCard order={order} couriers={couriers} />
+              <OrderCard order={order} isAdmin={isAdmin} />
             </li>
           ))}
         </ul>
