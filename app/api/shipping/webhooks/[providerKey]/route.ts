@@ -86,7 +86,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pr
       providerKey: key,
       eventId,
       orderId: matchedOrder.id,
-      eventType: (typeof payload.event === 'string' ? payload.event : payload.status).slice(0, 120),
+      eventType: (typeof payload.event === 'string' ? payload.event : payload.status ?? 'status_update').slice(0, 120),
       payload: JSON.stringify(payload).slice(0, 10000),
     }).onConflictDoNothing().returning({ id: shippingWebhookEvents.id })
     if (!inserted) return { duplicate: true as const }
