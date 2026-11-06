@@ -312,6 +312,7 @@ export async function createOrder(input: OrderInput) {
 
     const courierId = input.courierId ? id(input.courierId) : null
     let createdOrderId: number | null = null
+    let shouldAutoDispatch = false
 
     await db.transaction(async (tx) => {
       const modelIds = [
@@ -326,6 +327,7 @@ export async function createOrder(input: OrderInput) {
         courierId ? tx.select().from(couriers).where(eq(couriers.id, courierId)) : Promise.resolve([]),
       ])
       if (courierId && courierRows.length === 0) throw new UserError('شركة التوصيل غير موجودة')
+      shouldAutoDispatch = Boolean(courierRows[0]?.active && courierRows[0]?.apiEnabled && courierRows[0]?.sendOnOrderCreate)
 
       const getModel = (mid: number) => {
         const model = modelRows.find((m) => m.id === mid)
@@ -433,8 +435,8 @@ export async function createOrder(input: OrderInput) {
       }
     })
 
-    // If a courier with an active API integration was selected at registration, send immediately.
-    if (createdOrderId && courierId) {
+    // Automatic dispatch is opt-in per courier; selecting a courier alone must never create a shipment.
+    if (createdOrderId && courierId && shouldAutoDispatch) {
       const { dispatchShipment } = await import('@/lib/shipping/dispatch')
       await dispatchShipment(createdOrderId)
     }
@@ -495,7 +497,7 @@ export async function updateShipping(
         courierFee: courierFeeFor(courier, region),
       })
       .where(eq(orders.id, oid))
-    if (courierId && (courierId !== current.courierId || !['sent', 'synced'].includes(current.syncStatus))) {
+    if (courierId && courier.active && courier.apiEnabled && courier.sendOnOrderCreate && (courierId !== current.courierId || !['sent', 'synced'].includes(current.syncStatus))) {
       const { dispatchShipment } = await import('@/lib/shipping/dispatch')
       await dispatchShipment(oid)
     }
