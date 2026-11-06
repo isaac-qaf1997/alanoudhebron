@@ -6,7 +6,7 @@ export const metadata = { title: 'تسجيل الدخول | العنود للز�
 
 export default async function LoginPage() {
   const user = await getCurrentUser()
-  if (user) redirect(user.role === 'staff' ? '/orders' : '/')
+  if (user) redirect(user.role === 'staff' ? '/orders' : '/admin')
   if ((await userCount()) === 0) redirect('/setup')
 
   return (
