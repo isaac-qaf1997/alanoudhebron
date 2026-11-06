@@ -10,7 +10,7 @@ import { REGIONS } from '@/lib/constants'
 import type { CourierPublic } from '@/lib/db/schema'
 import { formatMoney } from '@/lib/format'
 
-const empty = { name: '', phone: '', feeWestBank: 15, feeJerusalem: 25, feeInside: 60, active: true, integrationKey: '' }
+const empty = { name: '', phone: '', feeWestBank: 15, feeJerusalem: 25, feeInside: 60, active: true, integrationKey: '', apiEnabled: false }
 
 export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
   const uid = useId()
@@ -29,6 +29,7 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
       feeInside: c.feeInside,
       active: c.active,
       integrationKey: c.integrationKey ?? '',
+      apiEnabled: c.apiEnabled,
     })
   }
 
@@ -110,6 +111,10 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
             {feeField('feeInside', 'الداخل')}
           </div>
           <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" className="size-4 accent-primary" checked={form.apiEnabled} onChange={(e) => setForm((f) => ({ ...f, apiEnabled: e.target.checked }))} />
+            تفعيل الربط البرمجي (API) بعد تجهيز الرمز السري
+          </label>
+          <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
               className="size-4 accent-primary"
@@ -163,7 +168,7 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
                     <p className="text-xs text-muted-foreground" dir="ltr">
                       {c.phone || '—'}
                     </p>
-                    {c.integrationKey ? <p className="mt-1 text-xs text-muted-foreground" dir="ltr">API: {c.integrationKey}</p> : null}
+                    {c.integrationKey ? <p className="mt-1 text-xs text-muted-foreground" dir="ltr">API: {c.integrationKey} · {c.apiEnabled ? 'مفعّل' : 'متوقف'}</p> : null}
                   </div>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon-sm" onClick={() => edit(c)} aria-label={`تعديل ${c.name}`}>
