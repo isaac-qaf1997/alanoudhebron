@@ -322,7 +322,7 @@ export async function createOrder(input: OrderInput) {
       ]
       const [modelRows, colorRows, courierRows] = await Promise.all([
         tx.select().from(models).where(inArray(models.id, modelIds)),
-        tx.select().from(modelColors).where(inArray(modelColors.modelId, modelIds)),
+        tx.select().from(modelColors).where(inArray(modelColors.modelId, modelIds)).for('update'),
         courierId ? tx.select().from(couriers).where(eq(couriers.id, courierId)) : Promise.resolve([]),
       ])
       if (courierId && courierRows.length === 0) throw new UserError('شركة التوصيل غير موجودة')
