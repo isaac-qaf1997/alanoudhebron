@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { submitStoreOrder } from '@/app/store-actions'
@@ -13,6 +13,7 @@ export default function CheckoutForm({ products }: { products: Product[] }) {
   const router = useRouter()
   const [items, setItems] = useState<CartLine[]>([])
   const [busy, setBusy] = useState(false)
+  const submitting = useRef(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState<number | null>(null)
   const [form, setForm] = useState({ customerName: '', phone: '', city: '', area: '', region: 'west_bank', address: '', paymentMethod: 'cod' as 'cod' })
