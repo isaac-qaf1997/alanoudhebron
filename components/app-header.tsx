@@ -4,6 +4,7 @@ import { Boxes, ClipboardList, LayoutGrid, Package, Truck } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import type { CurrentUser } from '@/lib/auth/session'
 
 const NAV = [
   { href: '/', label: 'لوحة التحكم', icon: LayoutGrid },
@@ -13,8 +14,9 @@ const NAV = [
   { href: '/delivery-sheet', label: 'كشف التوصيل اليومي', icon: ClipboardList },
 ]
 
-export function AppHeader({ activeCouriers }: { activeCouriers: number }) {
+export function AppHeader({ user, activeCouriers }: { user: CurrentUser; activeCouriers: number }) {
   const pathname = usePathname()
+  const navItems = user.role === 'admin' ? NAV : NAV.filter((item) => item.href === '/orders' || item.href === '/delivery-sheet')
 
   return (
     <header className="border-b border-border bg-background/95">
@@ -31,7 +33,7 @@ export function AppHeader({ activeCouriers }: { activeCouriers: number }) {
             <span className="text-xs text-muted-foreground">نظام المخزون والتوصيل</span>
           </span>
         </Link>
-        <Link
+        {user.role === 'admin' ? <Link
           href="/shipping"
           className="flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
         >
@@ -40,11 +42,11 @@ export function AppHeader({ activeCouriers }: { activeCouriers: number }) {
             aria-hidden="true"
           />
           {activeCouriers > 0 ? `${activeCouriers} شركة توصيل مفعّلة` : 'لا توجد شركة توصيل'}
-        </Link>
+        </Link> : null}
       </div>
       <nav aria-label="التنقل الرئيسي" className="mx-auto mt-3 max-w-7xl overflow-x-auto px-2 md:px-4">
         <ul className="flex min-w-max items-center">
-          {NAV.map((item) => {
+          {navItems.map((item) => {
             const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
             const Icon = item.icon
             return (
