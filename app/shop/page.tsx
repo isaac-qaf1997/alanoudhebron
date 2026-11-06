@@ -11,7 +11,7 @@ export default async function ShopPage() {
     db.select({ modelId: modelColors.modelId, color: modelColors.color, stock: modelColors.stock, imageUrl: modelColors.imageUrl }).from(modelColors).orderBy(asc(modelColors.id)),
   ])
   const available = products.map((product) => {
-    const variants = colors.filter((color) => color.modelId === product.id)
+    const variants = colors.filter((color) => color.modelId === product.id && color.stock > 0)
     return { ...product, imageUrl: variants.find((v) => v.imageUrl)?.imageUrl || product.imageUrl, variants, stock: variants.reduce((sum, v) => sum + v.stock, 0) }
   }).filter((product) => product.stock > 0)
   return (
