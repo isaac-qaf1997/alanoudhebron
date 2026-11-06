@@ -33,7 +33,7 @@ export async function loginAction(_previous: AuthFormState, formData: FormData):
   const password = String(formData.get('password') ?? '')
   if (!username || !password) return { error: 'أدخلي اسم المستخدم وكلمة المرور' }
 
-  let destination = '/' 
+  let destination = '/admin' 
   try {
     const [user] = await db.select().from(users).where(sql`lower(${users.username}) = ${username}`).limit(1)
     if (!user || !user.active) return { error: 'اسم المستخدم أو كلمة المرور غير صحيحة' }
@@ -47,7 +47,7 @@ export async function loginAction(_previous: AuthFormState, formData: FormData):
       }).where(eq(users.id, user.id))
       return { error: 'اسم المستخدم أو كلمة المرور غير صحيحة' }
     }
-    destination = user.role === 'staff' ? '/orders' : '/'
+    destination = user.role === 'staff' ? '/orders' : '/admin'
     await db.update(users).set({ lastLoginAt: now, failedLoginAttempts: 0, lockedUntil: null }).where(eq(users.id, user.id))
     await setSession(user.id)
   } catch (error) {
@@ -95,7 +95,7 @@ export async function setupFirstAdminAction(
     return { error: 'تعذر إنشاء حساب المدير. تأكدي من تحديث قاعدة البيانات وإضافة AUTH_SECRET في Vercel.' }
   }
 
-  redirect('/')
+  redirect('/admin')
 }
 
 export async function logoutAction() {
