@@ -7,12 +7,11 @@ import { RegionBadge, StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/field'
 import { STATUSES, STATUS_KEYS } from '@/lib/constants'
-import type { CourierPublic } from '@/lib/db/schema'
 import { formatDateTime, formatMoney } from '@/lib/format'
 import type { OrderFull } from '@/lib/queries'
 import { cn } from '@/lib/utils'
 
-export function OrderCard({ order }: { order: OrderFull; couriers?: CourierPublic[] }) {
+export function OrderCard({ order, isAdmin }: { order: OrderFull; isAdmin: boolean }) {
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
@@ -114,9 +113,11 @@ export function OrderCard({ order }: { order: OrderFull; couriers?: CourierPubli
               </option>
             ))}
           </Select>
-          <Button variant="ghost" size="icon" onClick={remove} disabled={pending} aria-label={`حذف الطلب ${order.id}`}>
-            <Trash2 className="size-4 text-destructive" />
-          </Button>
+          {isAdmin ? (
+            <Button variant="ghost" size="icon" onClick={remove} disabled={pending} aria-label={`حذف الطلب ${order.id}`}>
+              <Trash2 className="size-4 text-destructive" />
+            </Button>
+          ) : null}
         </div>
       </footer>
       {error ? (
