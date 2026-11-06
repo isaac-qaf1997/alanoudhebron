@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/field'
 import { EmptyState, Panel } from '@/components/ui/panel'
 import { STATUSES, type StatusKey } from '@/lib/constants'
-import type { Courier } from '@/lib/db/schema'
+import type { CourierPublic } from '@/lib/db/schema'
 import type { OrderFull } from '@/lib/queries'
 import { cn } from '@/lib/utils'
 
@@ -20,7 +20,7 @@ const TABS: { key: StatusKey | 'all'; label: string }[] = [
   { key: 'all', label: 'الكل' },
 ]
 
-export function ShipmentsBoard({ orders, couriers }: { orders: OrderFull[]; couriers: Courier[] }) {
+export function ShipmentsBoard({ orders, couriers }: { orders: OrderFull[]; couriers: CourierPublic[] }) {
   const [tab, setTab] = useState<StatusKey | 'all'>('preparing')
   const [courierFilter, setCourierFilter] = useState('')
   const [selected, setSelected] = useState<number[]>([])
