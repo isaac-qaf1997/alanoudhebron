@@ -73,9 +73,11 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pr
   const byReference = referenceMatch ? eq(orders.id, Number(referenceMatch[1])) : undefined
   const identity = [tracking, external, byReference].filter((value): value is SQL => Boolean(value))
   if (!identity.length) return NextResponse.json({ error: 'Shipment identifier required' }, { status: 400 })
+  const identityCondition = or(...identity)
+  if (!identityCondition) return NextResponse.json({ error: 'Shipment identifier required' }, { status: 400 })
 
   const [matchedOrder] = await db.select({ id: orders.id }).from(orders)
-    .where(and(eq(orders.courierId, courier.id), or(...identity))).limit(1)
+    .where(and(eq(orders.courierId, courier.id), identityCondition)).limit(1)
   if (!matchedOrder) return NextResponse.json({ error: 'Shipment not found' }, { status: 404 })
 
   const result = await db.transaction(async (tx) => {
