@@ -1,5 +1,5 @@
 import { STATUS_KEYS, type StatusKey } from '@/lib/constants'
-import type { Courier } from '@/lib/db/schema'
+import type { CourierPublic } from '@/lib/db/schema'
 import type { OrderFull } from '@/lib/queries'
 
 export function computeStats(orders: OrderFull[], couriers: Courier[]) {
