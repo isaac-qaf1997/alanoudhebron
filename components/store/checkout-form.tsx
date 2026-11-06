@@ -14,6 +14,7 @@ export default function CheckoutForm({ products }: { products: Product[] }) {
   const [items, setItems] = useState<CartLine[]>([])
   const [busy, setBusy] = useState(false)
   const submitting = useRef(false)
+  const requestKey = useRef<string | null>(null)
   const [error, setError] = useState('')
   const [done, setDone] = useState<number | null>(null)
   const [form, setForm] = useState({ customerName: '', phone: '', city: '', area: '', region: 'west_bank', address: '', paymentMethod: 'cod' as 'cod' })
@@ -27,12 +28,27 @@ export default function CheckoutForm({ products }: { products: Product[] }) {
   function update(field: string, value: string) { setForm(current => ({ ...current, [field]: value })) }
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+    if (submitting.current || busy) return
+    submitting.current = true
     setBusy(true); setError('')
-    const result = await submitStoreOrder({ ...form, items })
-    setBusy(false)
-    if (!result.ok) { setError(result.error); return }
-    localStorage.removeItem(KEY)
-    setDone(result.orderId)
+    try {
+      if (!requestKey.current) {
+        const storageKey = 'alanoud-checkout-request-v1'
+        requestKey.current = sessionStorage.getItem(storageKey) || crypto.randomUUID()
+        sessionStorage.setItem(storageKey, requestKey.current)
+      }
+      const result = await submitStoreOrder({ ...form, items, checkoutRequestKey: requestKey.current })
+      if (!result.ok) { setError(result.error); return }
+      localStorage.removeItem(KEY)
+      sessionStorage.removeItem('alanoud-checkout-request-v1')
+      requestKey.current = null
+      setDone(result.orderId)
+    } catch {
+      setError('تعذر الاتصال لإرسال الطلب. حاولي مرة أخرى؛ لن يتكرر الطلب إذا وصلنا الإرسال السابق.')
+    } finally {
+      submitting.current = false
+      setBusy(false)
+    }
   }
   if (done) return <section className="mx-auto max-w-xl rounded-3xl bg-white p-8 text-center shadow-sm"><div className="text-4xl">✓</div><h1 className="mt-4 text-2xl font-bold">تم استلام طلبك بنجاح</h1><p className="mt-3 leading-8 text-stone-600">رقم طلبك: <b>#{done}</b>. سنتواصل معك لتأكيد التفاصيل.</p><Link href="/shop" className="mt-6 inline-block rounded-full bg-[#765637] px-7 py-3 text-white">العودة للمتجر</Link></section>
   if (!items.length) return <section className="rounded-2xl bg-white p-8 text-center"><p>سلتك فارغة.</p><Link className="mt-4 inline-block text-[#765637] underline" href="/shop">تصفحي المنتجات</Link></section>
