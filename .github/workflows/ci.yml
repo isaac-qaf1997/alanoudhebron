@@ -4,6 +4,7 @@ on:
     branches:
       - main
       - multi-courier-foundation
+      - professional-storefront-entry
   workflow_dispatch:
 
 permissions:
