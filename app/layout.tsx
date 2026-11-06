@@ -1,8 +1,6 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { IBM_Plex_Sans_Arabic } from 'next/font/google'
-import { AppHeader } from '@/components/app-header'
-import { getCouriers } from '@/lib/queries'
 import './globals.css'
 export const dynamic = 'force-dynamic'
 const arabic = IBM_Plex_Sans_Arabic({
@@ -35,14 +33,10 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const couriers = await getCouriers()
-  const activeCouriers = couriers.filter((c) => c.active).length
-
   return (
     <html lang="ar" dir="rtl" className={arabic.variable}>
       <body className="min-h-dvh antialiased">
-        <AppHeader activeCouriers={activeCouriers} />
-        <main className="mx-auto w-full max-w-7xl px-4 py-6 md:px-6">{children}</main>
+        {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
