@@ -8,10 +8,10 @@ import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/field'
 import { STATUSES, STATUS_KEYS } from '@/lib/constants'
 import { formatDateTime, formatMoney } from '@/lib/format'
-import type { OrderFull } from '@/lib/queries'
+import type { OrderDisplay } from '@/lib/order-display'
 import { cn } from '@/lib/utils'
 
-export function OrderCard({ order, isAdmin }: { order: OrderFull; isAdmin: boolean }) {
+export function OrderCard({ order, isAdmin }: { order: OrderDisplay; isAdmin: boolean }) {
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
