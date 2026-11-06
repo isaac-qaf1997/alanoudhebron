@@ -66,6 +66,7 @@ export const orders = pgTable('orders', {
   region: text('region').notNull(),
   city: text('city').notNull(),
   address: text('address'),
+  area: text('area'),
   courierId: integer('courier_id'),
   trackingNumber: text('tracking_number'),
   status: text('status').notNull().default('preparing'),
