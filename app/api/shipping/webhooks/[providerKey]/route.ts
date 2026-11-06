@@ -61,6 +61,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pr
 
   const [courier] = await db.select().from(couriers).where(eq(couriers.integrationKey, key)).limit(1)
   if (!courier) return NextResponse.json({ error: 'Unknown carrier' }, { status: 404 })
+  if (!courier.active) return NextResponse.json({ error: 'Carrier is inactive' }, { status: 403 })
 
   const status = normalizeCarrierStatus(payload.status)
   if (!status) return NextResponse.json({ error: 'Unsupported status' }, { status: 422 })
