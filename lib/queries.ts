@@ -24,6 +24,7 @@ export async function getModels() {
     name: model.name,
     sku: model.sku,
     price: model.price,
+    cost: model.cost,
     imageUrl: model.imageUrl,
     createdAt: model.createdAt,
     colors: colorRows.filter((c) => c.modelId === model.id),
