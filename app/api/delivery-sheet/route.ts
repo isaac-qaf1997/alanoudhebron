@@ -1,4 +1,6 @@
 import ExcelJS from 'exceljs'
+import { NextResponse } from 'next/server'
+import { authorizeRole } from '@/lib/auth/session'
 import { REGIONS, STATUSES, isRegion, isStatus } from '@/lib/constants'
 import { isDateString, localDateString } from '@/lib/format'
 import { getDeliverySheet } from '@/lib/queries'
@@ -6,6 +8,9 @@ import { getDeliverySheet } from '@/lib/queries'
 export const runtime = 'nodejs'
 
 export async function GET(request: Request) {
+  const user = await authorizeRole('admin')
+  if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 })
+
   const url = new URL(request.url)
   const dateParam = url.searchParams.get('date')
   const date = isDateString(dateParam) ? dateParam : localDateString()
