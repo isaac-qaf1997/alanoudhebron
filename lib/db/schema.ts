@@ -143,6 +143,7 @@ export type CourierPublic = Pick<
   | 'feeJerusalem'
   | 'feeInside'
   | 'active'
+  | 'integrationKey'
   | 'createdAt'
   | 'apiBaseUrl'
   | 'apiEnabled'
