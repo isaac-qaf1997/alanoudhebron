@@ -438,7 +438,7 @@ export async function createOrder(input: OrderInput) {
       const { dispatchShipment } = await import('@/lib/shipping/dispatch')
       await dispatchShipment(createdOrderId)
     }
-  })
+  }, 'staff')
 }
 
 export async function updateOrderStatus(orderId: number, status: string) {
@@ -464,7 +464,7 @@ export async function updateOrderStatus(orderId: number, status: string) {
         })
         .where(eq(orders.id, oid))
     })
-  })
+  }, 'staff')
 }
 
 export async function updateShipping(
@@ -499,7 +499,7 @@ export async function updateShipping(
       const { dispatchShipment } = await import('@/lib/shipping/dispatch')
       await dispatchShipment(oid)
     }
-  })
+  }, 'staff')
 }
 
 export async function retryShippingSync(orderId: number) {
@@ -513,7 +513,7 @@ export async function retryShippingSync(orderId: number) {
     await dispatchShipment(oid)
     const [updated] = await db.select().from(orders).where(eq(orders.id, oid))
     if (updated?.syncStatus === 'failed') throw new UserError(updated.syncError || 'تعذر إرسال الشحنة')
-  })
+  }, 'staff')
 }
 
 export async function bulkShip(orderIds: number[]) {
@@ -530,7 +530,7 @@ export async function bulkShip(orderIds: number[]) {
     // Dispatch is best-effort: orders remain saved even if a carrier API is temporarily unavailable.
     const { dispatchShipment } = await import('@/lib/shipping/dispatch')
     for (const order of eligible) await dispatchShipment(order.id)
-  })
+  }, 'staff')
 }
 
 export async function deleteOrder(orderId: number) {
