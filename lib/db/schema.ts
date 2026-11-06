@@ -50,6 +50,7 @@ export const couriers = pgTable('couriers', {
   feeJerusalem: money('fee_jerusalem').notNull().default(25),
   feeInside: money('fee_inside').notNull().default(60),
   active: boolean('active').notNull().default(true),
+  integrationKey: text('integration_key'),
   apiBaseUrl: text('api_base_url'),
   apiKeyEncrypted: text('api_key_encrypted'),
   secretTokenEncrypted: text('secret_token_encrypted'),
@@ -78,9 +79,9 @@ export const orders = pgTable('orders', {
   shippedAt: timestamp('shipped_at', { withTimezone: true }),
   deliveredAt: timestamp('delivered_at', { withTimezone: true }),
   externalShipmentId: text('external_shipment_id'),
-  shippingProviderStatus: text('shipping_provider_status'),
-  shippingSyncedAt: timestamp('shipping_synced_at', { withTimezone: true }),
-  shippingError: text('shipping_error'),
+  syncStatus: text('sync_status').notNull().default('not_configured'),
+  syncError: text('sync_error'),
+  lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
@@ -117,14 +118,17 @@ export const shippingWebhookEvents = pgTable(
   'shipping_webhook_events',
   {
     id: serial('id').primaryKey(),
+    providerKey: text('provider_key').notNull(),
     eventId: text('event_id').notNull(),
-    courierId: integer('courier_id').notNull(),
-    trackingNumber: text('tracking_number').notNull(),
-    providerStatus: text('provider_status').notNull(),
-    payload: jsonb('payload').$type<Record<string, unknown>>(),
+    orderId: integer('order_id'),
+    eventType: text('event_type').notNull(),
+    payload: text('payload').notNull(),
     receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => ({ eventIdUnique: uniqueIndex('shipping_webhook_events_event_id_uq').on(table.eventId) }),
+  (table) => ({
+    providerEventUnique: uniqueIndex('shipping_webhook_events_provider_event_unique').on(table.providerKey, table.eventId),
+    orderIndex: index('shipping_webhook_events_order_idx').on(table.orderId),
+  }),
 )
 
 export type Model = typeof models.$inferSelect
