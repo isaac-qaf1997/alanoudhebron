@@ -15,7 +15,7 @@ export default function CheckoutForm({ products }: { products: Product[] }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState<number | null>(null)
-  const [form, setForm] = useState({ customerName: '', phone: '', city: '', area: '', region: 'west_bank', address: '', paymentMethod: 'cod' as 'cod' | 'prepaid', paymentReference: '' })
+  const [form, setForm] = useState({ customerName: '', phone: '', city: '', area: '', region: 'west_bank', address: '', paymentMethod: 'cod' as 'cod' })
   useEffect(() => {
     try { setItems(JSON.parse(localStorage.getItem(KEY) || '[]')) } catch { setItems([]) }
   }, [])
@@ -46,9 +46,7 @@ export default function CheckoutForm({ products }: { products: Product[] }) {
       </div>
       <label className="block text-sm">المنطقة / الحي<input required maxLength={100} value={form.area} onChange={e=>update('area',e.target.value)} className="mt-2 w-full rounded-xl border p-3"/></label>\n      <label className="block text-sm">العنوان بالتفصيل<textarea required value={form.address} onChange={e=>update('address',e.target.value)} className="mt-2 w-full rounded-xl border p-3"/></label>
       <h2 className="pt-3 text-lg font-bold">طريقة الدفع</h2>
-      <label className="flex cursor-pointer gap-3 rounded-xl border p-4"><input type="radio" checked={form.paymentMethod==='cod'} onChange={()=>update('paymentMethod','cod')}/> <span><b>الدفع عند الاستلام</b><small className="block text-stone-500">ادفعي عند وصول الطلب.</small></span></label>
-      <label className="flex cursor-pointer gap-3 rounded-xl border p-4"><input type="radio" checked={form.paymentMethod==='prepaid'} onChange={()=>update('paymentMethod','prepaid')}/> <span><b>الدفع المسبق المباشر</b><small className="block text-stone-500">سيتم تأكيد وسيلة التحويل وإثبات الدفع معك قبل اعتماد الطلب.</small></span></label>
-      {form.paymentMethod==='prepaid' && <label className="block text-sm">رقم مرجع التحويل (إن وجد)<input value={form.paymentReference} onChange={e=>update('paymentReference',e.target.value)} className="mt-2 w-full rounded-xl border p-3"/></label>}
+      <div className="rounded-xl border border-[#765637]/20 bg-[#faf8f4] p-4"><b>الدفع عند الاستلام</b><p className="mt-1 text-sm text-stone-500">ادفعي عند وصول الطلب.</p></div>
       {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       <button disabled={busy} className="w-full rounded-full bg-[#765637] px-6 py-4 font-bold text-white disabled:opacity-50">{busy?'جارٍ إرسال الطلب...':'تأكيد الطلب'}</button>
     </div>
