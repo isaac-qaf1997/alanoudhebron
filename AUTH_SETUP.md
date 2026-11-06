@@ -15,7 +15,7 @@ This update adds login protection and two roles to the existing Next.js + Neon p
 ## Deployment steps (keep the existing Neon database)
 
 1. Back up the existing Neon database before changing the deployed code.
-2. In Neon SQL Editor, run `db/migrations/0003_auth_roles.sql` from this project. It only creates the `users` table and its indexes; it does not alter existing order, inventory, or shipping data.
+2. In Neon SQL Editor, back up the database, then compare the schema with `db/migrations/0001_add_inventory_images.sql` through `db/migrations/0007_storefront_abuse_protection.sql`. Apply every migration that has not already been applied, in ascending order (0001 → 0007). Do not skip `0007_storefront_abuse_protection.sql`: public checkout depends on its idempotency column/index and rate-limit table. The migration files use `IF NOT EXISTS` or guarded constraints where appropriate, but review the current schema first and never run an unreviewed migration against production.
 3. In Vercel → Project → Settings → Environment Variables, add `AUTH_SECRET` and `INITIAL_SETUP_TOKEN` for Production (and Preview if you test preview deployments). Generate two different random values locally. For `AUTH_SECRET`, use:
 
    ```bash
