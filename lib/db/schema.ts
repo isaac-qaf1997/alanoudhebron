@@ -157,3 +157,13 @@ export type CourierPublic = Pick<
 export type Order = typeof orders.$inferSelect
 export type OrderItem = typeof orderItems.$inferSelect
 export type OrderExchange = typeof orderExchanges.$inferSelect
+
+
+export const storeOrderRateLimits = pgTable(
+  'store_order_rate_limits',
+  {
+    bucketKey: text('bucket_key').primaryKey(),
+    windowStartedAt: timestamp('window_started_at', { withTimezone: true }).notNull().defaultNow(),
+    requestCount: integer('request_count').notNull().default(1),
+  },
+)
