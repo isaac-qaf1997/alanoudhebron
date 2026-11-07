@@ -49,6 +49,7 @@ export function OrderCard({ order, isAdmin }: { order: OrderDisplay; isAdmin: bo
             <span className="flex items-center gap-1">
               <MapPin className="size-3" aria-hidden="true" />
               {order.city}
+              {order.area ? ` — ${order.area}` : ''}
               {order.address ? ` — ${order.address}` : ''}
             </span>
             <span>{formatDateTime(order.createdAt)}</span>
@@ -95,6 +96,8 @@ export function OrderCard({ order, isAdmin }: { order: OrderDisplay; isAdmin: bo
           </span>
           <span>
             توصيل {formatMoney(order.shippingFee)}
+            {order.discount > 0 ? ` · خصم ${formatMoney(order.discount)}` : ''}
+            {order.couponCode ? ` · كود ${order.couponCode}` : ''}
             {order.notes ? ` · ${order.notes}` : ''}
           </span>
         </div>

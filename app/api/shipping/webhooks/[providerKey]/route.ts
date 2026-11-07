@@ -3,7 +3,6 @@ import { and, eq, or, sql, type SQL } from 'drizzle-orm'
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { couriers, modelColors, orderExchanges, orderItems, orders, shippingWebhookEvents } from '@/lib/db/schema'
-import { INACTIVE_STATUSES } from '@/lib/constants'
 import { normalizeCarrierStatus } from '@/lib/shipping/dispatch'
 
 function safeEqual(a: string, b: string) {
@@ -17,19 +16,39 @@ async function restoreOrDeductStock(tx: Parameters<Parameters<typeof db.transact
     tx.select().from(orderItems).where(eq(orderItems.orderId, orderId)),
     tx.select().from(orderExchanges).where(eq(orderExchanges.orderId, orderId)),
   ])
-  const changes = [
-    ...items.map((item) => ({ modelId: item.modelId, color: item.color, delta: direction * item.quantity })),
-    ...exchanges.flatMap((exchange) => [
-      { modelId: exchange.newModelId, color: exchange.newColor, delta: direction * exchange.newQty },
-      { modelId: exchange.returnedModelId, color: exchange.returnedColor, delta: -direction * exchange.returnedQty },
-    ]),
-  ]
-  for (const change of changes) {
-    if (!change.modelId || !change.color) continue
-    await tx.update(modelColors)
-      .set({ stock: sql`greatest(${modelColors.stock} + ${change.delta}, 0)` })
-      .where(and(eq(modelColors.modelId, change.modelId), eq(modelColors.color, change.color)))
+  const changes = new Map<string, { modelId: number; color: string; delta: number }>()
+  const add = (modelId: number | null, color: string | null, delta: number) => {
+    if (!modelId) return
+    if (!color) throw new Error('Cannot adjust inventory: an order line has no saved color.')
+    const key = `${modelId}\u0000${color}`
+    const current = changes.get(key)
+    if (current) current.delta += delta
+    else changes.set(key, { modelId, color, delta })
   }
+  for (const item of items) add(item.modelId, item.color, direction * item.quantity)
+  for (const exchange of exchanges) {
+    add(exchange.newModelId, exchange.newColor, direction * exchange.newQty)
+    add(exchange.returnedModelId, exchange.returnedColor, -direction * exchange.returnedQty)
+  }
+  for (const change of changes.values()) {
+    if (change.delta === 0) continue
+    const updated = await tx.update(modelColors)
+      .set({ stock: sql`${modelColors.stock} + ${change.delta}` })
+      .where(and(
+        eq(modelColors.modelId, change.modelId),
+        eq(modelColors.color, change.color),
+        sql`${modelColors.stock} >= ${Math.max(0, -change.delta)}`,
+      ))
+      .returning({ id: modelColors.id })
+    if (updated.length !== 1) throw new Error('Inventory adjustment rejected: missing color or insufficient stock.')
+  }
+}
+
+function shouldApplyCarrierStatus(current: string, incoming: string) {
+  if (current === 'cancelled' || current === 'returned') return current === incoming
+  if (current === 'delivered') return incoming === 'delivered' || incoming === 'returned'
+  if (current === 'shipped') return incoming !== 'preparing'
+  return true
 }
 
 export async function POST(request: NextRequest, context: { params: Promise<{ providerKey: string }> }) {
@@ -94,8 +113,12 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pr
     const [order] = await tx.select().from(orders).where(eq(orders.id, matchedOrder.id)).for('update')
     if (!order) throw new Error('Order disappeared while processing webhook')
 
-    const wasInactive = INACTIVE_STATUSES.includes(order.status as (typeof INACTIVE_STATUSES)[number])
-    const isInactive = INACTIVE_STATUSES.includes(status as (typeof INACTIVE_STATUSES)[number])
+    if (!shouldApplyCarrierStatus(order.status, status)) {
+      return { duplicate: false as const, orderId: order.id, ignored: true as const, currentStatus: order.status }
+    }
+
+    const wasInactive = order.status === 'cancelled' || order.status === 'returned'
+    const isInactive = status === 'returned'
     if (!wasInactive && isInactive) await restoreOrDeductStock(tx, order.id, 1)
     if (wasInactive && !isInactive) await restoreOrDeductStock(tx, order.id, -1)
 
@@ -110,9 +133,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pr
       syncError: null,
       lastSyncedAt: now,
     }).where(eq(orders.id, order.id))
-    return { duplicate: false as const, orderId: order.id }
+    return { duplicate: false as const, orderId: order.id, ignored: false as const }
   })
 
   if (result.duplicate) return NextResponse.json({ ok: true, duplicate: true })
-  return NextResponse.json({ ok: true, orderId: result.orderId, status })
+  return NextResponse.json({ ok: true, orderId: result.orderId, status: 'ignored' in result && result.ignored ? result.currentStatus : status, ignored: 'ignored' in result && result.ignored })
 }

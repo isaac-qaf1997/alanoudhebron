@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull, lt, or } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { couriers, orderItems, orders } from '@/lib/db/schema'
+import { INACTIVE_STATUSES } from '@/lib/constants'
+import { couriers, orderExchanges, orderItems, orders } from '@/lib/db/schema'
 
 type CarrierConfig = { apiUrl: string; token: string; createPath: string }
 
@@ -28,6 +29,7 @@ function getCarrierConfig(key: string): CarrierConfig | null {
 export async function dispatchShipment(orderId: number) {
   const [order] = await db.select().from(orders).where(eq(orders.id, orderId))
   if (!order?.courierId) return
+  if (INACTIVE_STATUSES.includes(order.status as (typeof INACTIVE_STATUSES)[number])) return
   if (order.syncStatus === 'sent' || order.syncStatus === 'synced') return
 
   const [courier] = await db.select().from(couriers).where(eq(couriers.id, order.courierId))
@@ -70,7 +72,13 @@ export async function dispatchShipment(orderId: number) {
   if (!claim) return
 
   try {
-    const items = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId))
+    const [orderLines, exchangeLines] = await Promise.all([
+      db.select({ quantity: orderItems.quantity }).from(orderItems).where(eq(orderItems.orderId, order.id)),
+      db.select({ quantity: orderExchanges.newQty }).from(orderExchanges).where(eq(orderExchanges.orderId, order.id)),
+    ])
+    const quantity = [...orderLines, ...exchangeLines].reduce((sum, item) => sum + item.quantity, 0)
+    if (quantity <= 0) throw new Error('Order has no shippable items')
+    const codAmount = Math.max(Number(order.total) - Number(order.amountPaid || 0), 0)
     const response = await fetch(new URL(config.createPath, config.apiUrl), {
       method: 'POST',
       headers: {
@@ -82,10 +90,10 @@ export async function dispatchShipment(orderId: number) {
       signal: AbortSignal.timeout(15000),
       body: JSON.stringify({
         reference: `ORDER-${order.id}`,
-        recipient: { name: order.customerName, phone: order.phone, city: order.city, region: order.region, address: order.address },
-        codAmount: order.total,
-        notes: order.notes,
-        items: items.map((item) => ({ name: item.modelName, color: item.color, quantity: item.quantity })),
+        recipient: { name: order.customerName, phone: order.phone, city: order.city, area: order.area, region: order.region, address: order.address },
+        description: 'ملابس',
+        quantity,
+        codAmount,
       }),
     })
     const result = await response.json().catch(() => ({})) as { id?: string | number; shipmentId?: string | number; trackingNumber?: string }

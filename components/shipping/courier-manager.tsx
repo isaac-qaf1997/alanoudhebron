@@ -10,7 +10,7 @@ import { REGIONS } from '@/lib/constants'
 import type { CourierPublic } from '@/lib/db/schema'
 import { formatMoney } from '@/lib/format'
 
-const empty = { name: '', phone: '', feeWestBank: 15, feeJerusalem: 25, feeInside: 60, active: true, integrationKey: '', apiEnabled: false }
+const empty = { name: '', phone: '', feeWestBank: 18, feeJerusalem: 28, feeArea67: 50, feeInside: 68, active: true, integrationKey: '', apiEnabled: false }
 
 export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
   const uid = useId()
@@ -26,6 +26,7 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
       phone: c.phone ?? '',
       feeWestBank: c.feeWestBank,
       feeJerusalem: c.feeJerusalem,
+      feeArea67: c.feeArea67,
       feeInside: c.feeInside,
       active: c.active,
       integrationKey: c.integrationKey ?? '',
@@ -56,7 +57,7 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
     })
   }
 
-  const feeField = (key: 'feeWestBank' | 'feeJerusalem' | 'feeInside', label: string) => (
+  const feeField = (key: 'feeWestBank' | 'feeJerusalem' | 'feeArea67' | 'feeInside', label: string) => (
     <Field label={label} htmlFor={`${uid}-${key}`}>
       <Input
         id={`${uid}-${key}`}
@@ -105,9 +106,10 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
             />
             <p className="text-xs text-muted-foreground">يُستخدم لربط الشركة بإعدادات API الآمنة على الخادم. لا تضعي كلمة المرور أو مفتاح API هنا.</p>
           </Field>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {feeField('feeWestBank', 'الضفة')}
             {feeField('feeJerusalem', 'القدس')}
+            {feeField('feeArea67', 'مناطق 67')}
             {feeField('feeInside', 'الداخل')}
           </div>
           <label className="flex items-center gap-2 text-sm">
@@ -148,7 +150,7 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
 
       <Panel
         title="شركات التوصيل"
-        description={`رسوم التوصيل على العميلة: الضفة ${REGIONS.west_bank.fee} ₪ · القدس ${REGIONS.jerusalem.fee} ₪ · الداخل ${REGIONS.inside.fee} ₪`}
+        description={`رسوم التوصيل على العميلة: الضفة ${REGIONS.west_bank.fee} ₪ · القدس ${REGIONS.jerusalem.fee} ₪ · مناطق 67 ${REGIONS.area_67.fee} ₪ · الداخل ${REGIONS.inside.fee} ₪`}
       >
         {couriers.length === 0 ? (
           <EmptyState>لم تتم إضافة أي شركة توصيل بعد.</EmptyState>
@@ -185,10 +187,11 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
                     </Button>
                   </div>
                 </div>
-                <dl className="grid grid-cols-3 gap-2 text-center text-xs">
+                <dl className="grid grid-cols-2 gap-2 text-center text-xs sm:grid-cols-4">
                   {[
                     ['الضفة', c.feeWestBank],
                     ['القدس', c.feeJerusalem],
+                    ['مناطق 67', c.feeArea67],
                     ['الداخل', c.feeInside],
                   ].map(([label, fee]) => (
                     <div key={label} className="rounded-lg bg-muted px-2 py-1.5">

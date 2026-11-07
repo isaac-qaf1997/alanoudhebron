@@ -6,7 +6,7 @@ export const metadata = { title: 'إعداد المدير الأول | العن�
 
 export default async function SetupPage() {
   const current = await getCurrentUser()
-  if (current) redirect('/')
+  if (current) redirect(current.role === 'admin' ? '/admin' : '/orders')
   if ((await userCount()) > 0) redirect('/login')
 
   return (

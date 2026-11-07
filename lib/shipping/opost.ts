@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull, lt, or } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { couriers, orderItems, orders } from '@/lib/db/schema'
+import { INACTIVE_STATUSES } from '@/lib/constants'
+import { couriers, orderExchanges, orderItems, orders } from '@/lib/db/schema'
 
 const BASE = 'https://o.opost.ps'
 const BUSINESS_ID = process.env.OPOST_BUSINESS_ID || '586'
@@ -52,6 +53,7 @@ async function resolveLocation(cityName: string, areaName: string, token: string
 export async function dispatchOpostShipment(orderId: number) {
   const [order] = await db.select().from(orders).where(eq(orders.id, orderId))
   if (!order?.courierId) return
+  if (INACTIVE_STATUSES.includes(order.status as (typeof INACTIVE_STATUSES)[number])) return
   if (order.syncStatus === 'sent' || order.syncStatus === 'synced') return
   const [courier] = await db.select().from(couriers).where(eq(couriers.id, order.courierId))
   if (!courier?.active || !courier.apiEnabled || courier.integrationKey !== 'opost') return
@@ -70,9 +72,13 @@ export async function dispatchOpostShipment(orderId: number) {
   try {
     if (!order.area) throw new Error('الطلب لا يحتوي على المنطقة/الحي بشكل منفصل؛ أضيفيها قبل إرسال الشحنة.')
     const location = await resolveLocation(order.city, order.area, token)
-    const items = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId))
-    const quantity = items.reduce((sum, item) => sum + item.quantity, 0)
-    const description = items.map(item => `${item.modelName} - ${item.color || ''} × ${item.quantity}`).join('، ').slice(0, 500)
+    const [items, exchangeItems] = await Promise.all([
+      db.select({ quantity: orderItems.quantity }).from(orderItems).where(eq(orderItems.orderId, orderId)),
+      db.select({ quantity: orderExchanges.newQty }).from(orderExchanges).where(eq(orderExchanges.orderId, orderId)),
+    ])
+    const quantity = [...items, ...exchangeItems].reduce((sum, item) => sum + item.quantity, 0)
+    if (quantity <= 0) throw new Error('Order has no shippable items')
+
     const codAmount = Math.max(Number(order.total) - Number(order.amountPaid || 0), 0)
     const form = new FormData()
     form.set('business', BUSINESS_ID)
@@ -84,7 +90,7 @@ export async function dispatchOpostShipment(orderId: number) {
     form.set('consignee[address]', order.address || order.area)
     form.set('shipment_types[0][id]', SHIPMENT_TYPE_ID)
     form.set('quantity', String(quantity))
-    form.set('items_description', description || 'ملابس')
+    form.set('items_description', 'ملابس')
     form.set('is_cod', codAmount > 0 ? '1' : '0')
     form.set('width', process.env.OPOST_DEFAULT_WIDTH || '10')
     form.set('height', process.env.OPOST_DEFAULT_HEIGHT || '10')

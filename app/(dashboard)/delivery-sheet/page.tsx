@@ -75,7 +75,7 @@ export default async function DeliverySheetPage({
             <table className="w-full min-w-[880px] text-sm">
               <thead>
                 <tr className="border-b border-border text-muted-foreground">
-                  {['#', 'العميلة', 'الهاتف', 'المدينة', 'المنطقة', 'المنتجات', 'الشركة', 'التتبع', 'المبلغ', 'الحالة'].map((h) => (
+                  {['#', 'العميلة', 'الهاتف', 'المدينة', 'المنطقة', 'وصف الطرد', 'الشركة', 'التتبع', 'المبلغ', 'الحالة'].map((h) => (
                     <th key={h} scope="col" className="py-2 pe-3 text-start font-medium">
                       {h}
                     </th>
@@ -98,8 +98,7 @@ export default async function DeliverySheetPage({
                       <RegionBadge region={o.region} />
                     </td>
                     <td className="py-3 pe-3 text-xs">
-                      {o.items.map((i) => `${i.modelName} (${i.color}) × ${i.quantity}`).join('، ')}
-                      {o.exchanges.length ? <span className="block text-info">يشمل استبدال</span> : null}
+                      ملابس
                     </td>
                     <td className="py-3 pe-3">{o.courierName ?? '—'}</td>
                     <td className="py-3 pe-3" dir="ltr">

@@ -4,12 +4,44 @@ import { eq, inArray, sql } from 'drizzle-orm'
 import { createHash } from 'node:crypto'
 import { headers } from 'next/headers'
 import { db } from '@/lib/db'
-import { modelColors, models, orderItems, orders } from '@/lib/db/schema'
-import { REGIONS, isRegion } from '@/lib/constants'
+import { coupons, modelColors, models, orderItems, orders } from '@/lib/db/schema'
+import { CITY_REGIONS, REGIONS, isRegion } from '@/lib/constants'
 
 export type StoreOrderResult = { ok: true; orderId: number } | { ok: false; error: string }
 
 const clean = (v: unknown, max: number) => typeof v === 'string' ? v.trim().slice(0, max) : ''
+
+function couponDiscount(coupon: typeof coupons.$inferSelect, subtotal: number) {
+  const raw = coupon.discountType === 'percentage'
+    ? subtotal * coupon.discountValue / 100
+    : coupon.discountValue
+  return Math.min(subtotal, Math.round(raw * 100) / 100)
+}
+
+function couponAvailability(coupon: typeof coupons.$inferSelect | undefined) {
+  if (!coupon || !coupon.active) return 'كود الخصم غير صحيح أو غير مفعّل.'
+  const now = Date.now()
+  if (coupon.startsAt && coupon.startsAt.getTime() > now) return 'هذا الكود لم يبدأ استخدامه بعد.'
+  if (coupon.expiresAt && coupon.expiresAt.getTime() <= now) return 'انتهت صلاحية كود الخصم.'
+  if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) return 'تم استخدام هذا الكود للعدد المسموح.'
+  return null
+}
+
+export async function checkStoreCoupon(codeInput: string, subtotalInput: number) {
+  try {
+    const code = clean(codeInput, 32).toUpperCase()
+    const subtotal = Number(subtotalInput)
+    if (!/^[A-Z0-9_-]{3,32}$/.test(code) || !Number.isFinite(subtotal) || subtotal <= 0) {
+      return { ok: false as const, error: 'أدخلي كود خصم صحيحاً.' }
+    }
+    const [coupon] = await db.select().from(coupons).where(sql`upper(${coupons.code}) = ${code}`).limit(1)
+    const unavailable = couponAvailability(coupon)
+    if (unavailable) return { ok: false as const, error: unavailable }
+    return { ok: true as const, code, discount: couponDiscount(coupon!, subtotal), discountType: coupon!.discountType, discountValue: coupon!.discountValue }
+  } catch {
+    return { ok: false as const, error: 'تعذر التحقق من الكود حالياً. حاولي مرة أخرى.' }
+  }
+}
 
 export async function submitStoreOrder(input: {
   customerName: string
@@ -21,6 +53,7 @@ export async function submitStoreOrder(input: {
   paymentMethod: 'cod' | 'prepaid'
   paymentReference?: string
   checkoutRequestKey: string
+  couponCode?: string
   items: { modelId: number; color: string; quantity: number }[]
 }): Promise<StoreOrderResult> {
   try {
@@ -32,7 +65,11 @@ export async function submitStoreOrder(input: {
     const region = clean(input.region, 20)
     const paymentMethod = input.paymentMethod
     if (!customerName || !/^[0-9+\-\s]{7,20}$/.test(phone) || !city || !area || !address || !isRegion(region)) {
-      return { ok: false, error: 'يرجى تعبئة الاسم والهاتف والمدينة والعنوان واختيار منطقة التوصيل بشكل صحيح.' }
+      return { ok: false, error: 'يرجى تعبئة الاسم والهاتف والمدينة والمنطقة/الحي والعنوان واختيار منطقة التوصيل بشكل صحيح.' }
+    }
+    const expectedRegion = CITY_REGIONS[city]
+    if (expectedRegion && expectedRegion !== region) {
+      return { ok: false, error: 'منطقة التوصيل لا تتوافق مع المدينة المحددة. راجعي المدينة ومنطقة التوصيل.' }
     }
     if (paymentMethod !== 'cod') return { ok: false, error: 'الدفع المسبق غير متاح حالياً. اختاري الدفع عند الاستلام.' }
     const checkoutRequestKey = clean(input.checkoutRequestKey, 36)
@@ -104,10 +141,19 @@ export async function submitStoreOrder(input: {
           .returning({ id: modelColors.id })
         if (!changed.length) throw new Error('نفدت كمية أحد المنتجات أثناء إتمام الطلب. حدّثي السلة وحاولي مجدداً.')
       }
+      const couponCode = clean(input.couponCode, 32).toUpperCase()
+      let discount = 0
+      if (couponCode) {
+        const [coupon] = await tx.select().from(coupons).where(sql`upper(${coupons.code}) = ${couponCode}`).for('update')
+        const unavailable = couponAvailability(coupon)
+        if (unavailable) throw new Error(unavailable)
+        discount = couponDiscount(coupon!, itemsTotal)
+        await tx.update(coupons).set({ usedCount: sql`${coupons.usedCount} + 1` }).where(eq(coupons.id, coupon!.id))
+      }
       const shippingFee = REGIONS[region as keyof typeof REGIONS].fee
-      const total = itemsTotal + shippingFee
+      const total = itemsTotal + shippingFee - discount
       const [order] = await tx.insert(orders).values({
-        customerName, phone, region, city, area, address, itemsTotal, shippingFee, total, costTotal,
+        customerName, phone, region, city, area, address, itemsTotal, shippingFee, discount, couponCode: couponCode || null, total, costTotal,
         paymentMethod, amountPaid: 0,
         paymentStatus: paymentMethod === 'cod' ? 'unpaid' : 'pending_review',
         paymentReference: null,

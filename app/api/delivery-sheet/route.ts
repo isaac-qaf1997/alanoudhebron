@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs'
 import { NextResponse } from 'next/server'
-import { authorizeRole } from '@/lib/auth/session'
+import { getCurrentUser } from '@/lib/auth/session'
 import { REGIONS, STATUSES, isRegion, isStatus } from '@/lib/constants'
 import { isDateString, localDateString } from '@/lib/format'
 import { getDeliverySheet } from '@/lib/queries'
@@ -8,7 +8,7 @@ import { getDeliverySheet } from '@/lib/queries'
 export const runtime = 'nodejs'
 
 export async function GET(request: Request) {
-  const user = await authorizeRole('admin')
+  const user = await getCurrentUser()
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 })
 
   const url = new URL(request.url)
@@ -27,38 +27,32 @@ export async function GET(request: Request) {
     { header: 'اسم العميلة', key: 'name', width: 22 },
     { header: 'الهاتف', key: 'phone', width: 16 },
     { header: 'المدينة', key: 'city', width: 14 },
+    { header: 'الحي', key: 'area', width: 18 },
     { header: 'المنطقة', key: 'region', width: 12 },
     { header: 'العنوان', key: 'address', width: 28 },
-    { header: 'المنتجات', key: 'items', width: 40 },
+    { header: 'وصف الطرد', key: 'items', width: 20 },
     { header: 'عدد القطع', key: 'pieces', width: 10 },
     { header: 'شركة التوصيل', key: 'courier', width: 16 },
     { header: 'رقم التتبع', key: 'tracking', width: 16 },
     { header: 'المبلغ المطلوب', key: 'total', width: 14 },
-    { header: 'رسوم الشركة', key: 'fee', width: 12 },
-    { header: 'الصافي', key: 'net', width: 12 },
     { header: 'الحالة', key: 'status', width: 12 },
-    { header: 'ملاحظات', key: 'notes', width: 24 },
   ]
 
   for (const o of rows) {
-    const items = o.items.map((i) => `${i.modelName} (${i.color}) × ${i.quantity}`)
-    const exchanges = o.exchanges.map((e) => `استبدال: ${e.returnedName} ← ${e.newName} (${e.newColor})`)
     sheet.addRow({
       id: o.id,
       name: o.customerName,
       phone: o.phone,
       city: o.city,
+      area: o.area ?? '',
       region: isRegion(o.region) ? REGIONS[o.region].label : o.region,
       address: o.address ?? '',
-      items: [...items, ...exchanges].join('\n'),
+      items: 'ملابس',
       pieces: o.items.reduce((s, i) => s + i.quantity, 0),
       courier: o.courierName ?? '',
       tracking: o.trackingNumber ?? '',
       total: o.total,
-      fee: o.courierFee,
-      net: o.total - o.courierFee,
       status: isStatus(o.status) ? STATUSES[o.status].label : o.status,
-      notes: o.notes ?? '',
     })
   }
 
@@ -66,8 +60,6 @@ export async function GET(request: Request) {
     id: 'المجموع',
     pieces: rows.reduce((s, o) => s + o.items.reduce((is, i) => is + i.quantity, 0), 0),
     total: rows.reduce((s, o) => s + o.total, 0),
-    fee: rows.reduce((s, o) => s + o.courierFee, 0),
-    net: rows.reduce((s, o) => s + o.total - o.courierFee, 0),
   })
   totalRow.font = { bold: true }
 
@@ -77,7 +69,7 @@ export async function GET(request: Request) {
   sheet.eachRow((row) => {
     row.alignment = { vertical: 'top', horizontal: 'right', wrapText: true, readingOrder: 'rtl' }
   })
-  for (const key of ['total', 'fee', 'net']) sheet.getColumn(key).numFmt = '#,##0.00 "₪"'
+  sheet.getColumn('total').numFmt = '#,##0.00 "₪"'
 
   const buffer = await workbook.xlsx.writeBuffer()
   const filename = `delivery-sheet-${date}.xlsx`

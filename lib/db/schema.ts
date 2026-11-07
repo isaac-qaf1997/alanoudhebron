@@ -40,15 +40,18 @@ export const modelColors = pgTable('model_colors', {
   color: text('color').notNull(),
   stock: integer('stock').notNull().default(0),
   imageUrl: text('image_url'),
-})
+}, (table) => ({
+  modelColorUnique: uniqueIndex('model_colors_model_color_normalized_uq').on(table.modelId, sql`lower(btrim(${table.color}))`),
+}))
 
 export const couriers = pgTable('couriers', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
   phone: text('phone'),
-  feeWestBank: money('fee_west_bank').notNull().default(15),
-  feeJerusalem: money('fee_jerusalem').notNull().default(25),
-  feeInside: money('fee_inside').notNull().default(60),
+  feeWestBank: money('fee_west_bank').notNull().default(18),
+  feeJerusalem: money('fee_jerusalem').notNull().default(28),
+  feeArea67: money('fee_area_67').notNull().default(50),
+  feeInside: money('fee_inside').notNull().default(68),
   active: boolean('active').notNull().default(true),
   integrationKey: text('integration_key'),
   apiBaseUrl: text('api_base_url'),
@@ -57,7 +60,9 @@ export const couriers = pgTable('couriers', {
   apiEnabled: boolean('api_enabled').notNull().default(false),
   sendOnOrderCreate: boolean('send_on_order_create').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-})
+}, (table) => ({
+  integrationKeyUnique: uniqueIndex('couriers_integration_key_uq').on(sql`lower(btrim(${table.integrationKey}))`).where(sql`${table.integrationKey} IS NOT NULL AND btrim(${table.integrationKey}) <> ''`),
+}))
 
 export const orders = pgTable('orders', {
   id: serial('id').primaryKey(),
@@ -72,6 +77,8 @@ export const orders = pgTable('orders', {
   status: text('status').notNull().default('preparing'),
   itemsTotal: money('items_total').notNull().default(0),
   shippingFee: money('shipping_fee').notNull().default(0),
+  discount: money('discount').notNull().default(0),
+  couponCode: text('coupon_code'),
   exchangeDiff: money('exchange_diff').notNull().default(0),
   total: money('total').notNull().default(0),
   costTotal: money('cost_total').notNull().default(0),
@@ -90,6 +97,23 @@ export const orders = pgTable('orders', {
   lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({ checkoutRequestUnique: uniqueIndex('orders_checkout_request_key_uq').on(table.checkoutRequestKey).where(sql`${table.checkoutRequestKey} IS NOT NULL`) }))
+
+export const coupons = pgTable('coupons', {
+  id: serial('id').primaryKey(),
+  code: text('code').notNull().unique(),
+  discountType: text('discount_type').$type<'fixed' | 'percentage'>().notNull(),
+  discountValue: money('discount_value').notNull(),
+  active: boolean('active').notNull().default(true),
+  startsAt: timestamp('starts_at', { withTimezone: true }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  usageLimit: integer('usage_limit'),
+  usedCount: integer('used_count').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  codeUpperUnique: uniqueIndex('coupons_code_upper_uq').on(sql`upper(${table.code})`),
+}))
+
+export type Coupon = typeof coupons.$inferSelect
 
 export const orderItems = pgTable('order_items', {
   id: serial('id').primaryKey(),
@@ -147,6 +171,7 @@ export type CourierPublic = Pick<
   | 'phone'
   | 'feeWestBank'
   | 'feeJerusalem'
+  | 'feeArea67'
   | 'feeInside'
   | 'active'
   | 'integrationKey'

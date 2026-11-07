@@ -3,6 +3,7 @@ import type { PgColumn } from 'drizzle-orm/pg-core'
 import { db } from '@/lib/db'
 import {
   couriers,
+  coupons,
   modelColors,
   models,
   orderExchanges,
@@ -38,7 +39,7 @@ export async function getCouriers(): Promise<CourierPublic[]> {
   return rows.map(({ apiKeyEncrypted, secretTokenEncrypted, integrationKey, ...courier }) => ({
     id: courier.id, name: courier.name, phone: courier.phone, integrationKey,
     feeWestBank: courier.feeWestBank, feeJerusalem: courier.feeJerusalem,
-    feeInside: courier.feeInside, active: courier.active, createdAt: courier.createdAt,
+    feeArea67: courier.feeArea67, feeInside: courier.feeInside, active: courier.active, createdAt: courier.createdAt,
     apiBaseUrl: courier.apiBaseUrl, apiEnabled: courier.apiEnabled,
     sendOnOrderCreate: courier.sendOnOrderCreate,
     hasApiKey: Boolean(apiKeyEncrypted), hasSecretToken: Boolean(secretTokenEncrypted),
@@ -91,4 +92,8 @@ export async function getDeliverySheet(date: string, courierId: number | null) {
   if (courierId) conditions.push(eq(orders.courierId, courierId))
   const rows = await selectOrders(and(...conditions))
   return rows.sort((a, b) => a.id - b.id)
+}
+
+export async function getCoupons() {
+  return db.select().from(coupons).orderBy(desc(coupons.createdAt))
 }

@@ -38,6 +38,7 @@ const emptyCustomer = {
   phone: '',
   city: '',
   region: '' as RegionKey | '',
+  area: '',
   address: '',
   courierId: '',
   trackingNumber: '',
@@ -50,6 +51,7 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
   const [customer, setCustomer] = useState(emptyCustomer)
   const [items, setItems] = useState<ItemLine[]>(() => [newItem()])
   const [exchanges, setExchanges] = useState<ExchangeLine[]>([])
+  const [discount, setDiscount] = useState(0)
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
 
   const modelById = (id: string) => models.find((m) => String(m.id) === id)
@@ -61,7 +63,10 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
     0,
   )
   const shipping = customer.region ? REGIONS[customer.region].fee : 0
-  const total = Math.max(itemsTotal + shipping + exchangeDiff, 0)
+  const discountableSubtotal = itemsTotal + Math.max(0, exchangeDiff)
+  const subtotal = Math.max(itemsTotal + shipping + exchangeDiff, 0)
+  const appliedDiscount = Math.min(discount, discountableSubtotal)
+  const total = Math.max(subtotal - appliedDiscount, 0)
 
   const set = <K extends keyof typeof customer>(key: K, value: (typeof customer)[K]) =>
     setCustomer((c) => ({ ...c, [key]: value }))
@@ -83,13 +88,14 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
     setMessage(null)
     const filledItems = items.filter((i) => i.modelId)
     const filledExchanges = exchanges.filter((x) => x.returnedModelId && x.newModelId)
-    if (filledItems.some((i) => !i.color) || filledExchanges.some((x) => !x.newColor)) {
+    if (filledItems.some((i) => !i.color) || filledExchanges.some((x) => !x.returnedColor || !x.newColor)) {
       setMessage({ type: 'error', text: 'اختاري اللون لكل موديل' })
       return
     }
     startTransition(async () => {
       const result = await createOrder({
         ...customer,
+        discount: appliedDiscount,
         region: customer.region,
         courierId: customer.courierId ? Number(customer.courierId) : null,
         items: filledItems.map((i) => ({ modelId: Number(i.modelId), color: i.color, quantity: i.quantity })),
@@ -106,6 +112,7 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
         setCustomer(emptyCustomer)
         setItems([newItem()])
         setExchanges([])
+        setDiscount(0)
         setMessage({ type: 'success', text: 'تم إنشاء الطلب وخصم المخزون' })
       } else {
         setMessage({ type: 'error', text: result.error })
@@ -368,6 +375,9 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
               </Select>
             </Field>
           </div>
+          <Field label="المنطقة / الحي" htmlFor={`${uid}-area`}>
+            <Input id={`${uid}-area`} value={customer.area} onChange={(e) => set('area', e.target.value)} required />
+          </Field>
           <Field label="العنوان التفصيلي" htmlFor={`${uid}-address`}>
             <Input id={`${uid}-address`} value={customer.address} onChange={(e) => set('address', e.target.value)} />
           </Field>
@@ -401,6 +411,19 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
           </Field>
         </fieldset>
 
+        <Field label="خصم على الطلب (شيكل)" htmlFor={`${uid}-discount`}>
+          <Input
+            id={`${uid}-discount`}
+            type="number"
+            min={0}
+            max={discountableSubtotal}
+            step="0.5"
+            value={appliedDiscount}
+            onChange={(e) => setDiscount(Math.min(discountableSubtotal, Math.max(0, Number(e.target.value) || 0)))}
+          />
+          <p className="text-xs text-muted-foreground">يُحسب الخصم على قيمة المنتجات فقط، ولا يشمل رسوم التوصيل. شركة التوصيل تستلم مبلغ التحصيل النهائي فقط.</p>
+        </Field>
+
         <dl className="flex flex-col gap-2 rounded-xl border border-border bg-background/40 p-4 text-sm">
           <div className="flex justify-between">
             <dt className="text-muted-foreground">قيمة المنتجات</dt>
@@ -418,6 +441,12 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
             </dt>
             <dd className="tabular-nums">{formatMoney(shipping)}</dd>
           </div>
+          {appliedDiscount > 0 ? (
+            <div className="flex justify-between text-destructive">
+              <dt>الخصم</dt>
+              <dd className="tabular-nums">− {formatMoney(appliedDiscount)}</dd>
+            </div>
+          ) : null}
           <div className="flex justify-between border-t border-border pt-2 text-base font-bold">
             <dt>الإجمالي</dt>
             <dd className="tabular-nums text-primary">{formatMoney(total)}</dd>

@@ -6,6 +6,7 @@ import { authorizeRole, type CurrentUser } from '@/lib/auth/session'
 import { db } from '@/lib/db'
 import {
   couriers,
+  coupons,
   modelColors,
   models,
   orderExchanges,
@@ -13,6 +14,7 @@ import {
   orders,
 } from '@/lib/db/schema'
 import {
+  CITY_REGIONS,
   INACTIVE_STATUSES,
   REGIONS,
   courierFeeFor,
@@ -80,6 +82,45 @@ async function run(
   }
 }
 
+
+/* -------------------------------- Coupons ---------------------------------- */
+
+export type CouponInput = {
+  code: string
+  discountType: 'fixed' | 'percentage'
+  discountValue: number
+  startsAt?: string
+  expiresAt?: string
+  usageLimit?: number | null
+}
+
+export async function createCoupon(input: CouponInput) {
+  return run(async () => {
+    const code = text(input.code, 32).toUpperCase()
+    if (!/^[A-Z0-9_-]{3,32}$/.test(code)) throw new UserError('الكود يجب أن يتكون من 3 إلى 32 حرفاً أو رقماً')
+    if (input.discountType !== 'fixed' && input.discountType !== 'percentage') throw new UserError('نوع الخصم غير صالح')
+    const discountValue = amount(input.discountValue)
+    if (discountValue <= 0 || (input.discountType === 'percentage' && discountValue > 100)) {
+      throw new UserError(input.discountType === 'percentage' ? 'النسبة يجب أن تكون بين 1 و100%' : 'قيمة الخصم يجب أن تكون أكبر من صفر')
+    }
+    const startsAt = input.startsAt ? new Date(input.startsAt) : null
+    const expiresAt = input.expiresAt ? new Date(input.expiresAt) : null
+    if ((startsAt && Number.isNaN(startsAt.getTime())) || (expiresAt && Number.isNaN(expiresAt.getTime()))) throw new UserError('تاريخ الكوبون غير صالح')
+    if (startsAt && expiresAt && expiresAt <= startsAt) throw new UserError('تاريخ الانتهاء يجب أن يكون بعد تاريخ البداية')
+    const usageLimit = input.usageLimit == null || input.usageLimit === 0 ? null : qty(input.usageLimit)
+    const [existing] = await db.select({ id: coupons.id }).from(coupons).where(eq(coupons.code, code)).limit(1)
+    if (existing) throw new UserError('هذا الكود موجود مسبقاً')
+    await db.insert(coupons).values({ code, discountType: input.discountType, discountValue, startsAt, expiresAt, usageLimit })
+  })
+}
+
+export async function setCouponActive(couponId: number, active: boolean) {
+  return run(async () => {
+    if (typeof active !== 'boolean') throw new UserError('حالة الكوبون غير صالحة')
+    await db.update(coupons).set({ active }).where(eq(coupons.id, id(couponId)))
+  })
+}
+
 /* ---------------------------------- Models --------------------------------- */
 
 export async function createModel(input: {
@@ -97,8 +138,9 @@ export async function createModel(input: {
       .map((c) => ({ color: text(c.color, 60), stock: qty(c.stock, true), imageUrl: imageUrl(c.imageUrl) }))
       .filter((c) => c.color)
     if (colors.length === 0) throw new UserError('أضيفي لوناً واحداً على الأقل')
-    if (new Set(colors.map((c) => c.color)).size !== colors.length) {
-      throw new UserError('يوجد لون مكرر')
+    const normalizedColors = colors.map((c) => c.color.normalize('NFKC').trim().toLowerCase())
+    if (new Set(normalizedColors).size !== colors.length) {
+      throw new UserError('يوجد لون مكرر حتى لو اختلفت طريقة كتابة الحروف')
     }
     await db.transaction(async (tx) => {
       const [model] = await tx
@@ -140,6 +182,10 @@ export async function deleteModel(modelId: number) {
   return run(async () => {
     const mid = id(modelId)
     await db.transaction(async (tx) => {
+      const [usedItem] = await tx.select({ id: orderItems.id }).from(orderItems).where(eq(orderItems.modelId, mid)).limit(1)
+      const [usedExchange] = await tx.select({ id: orderExchanges.id }).from(orderExchanges)
+        .where(sql`${orderExchanges.returnedModelId} = ${mid} OR ${orderExchanges.newModelId} = ${mid}`).limit(1)
+      if (usedItem || usedExchange) throw new UserError('لا يمكن حذف موديل مرتبط بسجل طلبات سابق. أوقفي عرضه أو اجعلي كمياته صفراً للحفاظ على سجل الطلبات والمخزون.')
       await tx.delete(modelColors).where(eq(modelColors.modelId, mid))
       await tx.delete(models).where(eq(models.id, mid))
     })
@@ -151,8 +197,10 @@ export async function addModelColor(modelId: number, color: string, stock: numbe
     const name = text(color, 60)
     if (!name) throw new UserError('اسم اللون مطلوب')
     const mid = id(modelId)
-    const existing = await db.select().from(modelColors).where(eq(modelColors.modelId, mid))
-    if (existing.some((c) => c.color === name)) throw new UserError('هذا اللون موجود مسبقاً')
+    const existing = await db.select().from(modelColors).where(
+      sql`${modelColors.modelId} = ${mid} AND lower(btrim(${modelColors.color})) = lower(btrim(${name}))`,
+    )
+    if (existing.length) throw new UserError('هذا اللون موجود مسبقاً')
     await db.insert(modelColors).values({ modelId: mid, color: name, stock: qty(stock, true), imageUrl: imageUrl(image) })
   })
 }
@@ -171,7 +219,17 @@ export async function setColorStock(colorId: number, stock: number) {
 
 export async function deleteModelColor(colorId: number) {
   return run(async () => {
-    await db.delete(modelColors).where(eq(modelColors.id, id(colorId)))
+    const cid = id(colorId)
+    await db.transaction(async (tx) => {
+      const [color] = await tx.select().from(modelColors).where(eq(modelColors.id, cid)).limit(1)
+      if (!color) return
+      const [usedItem] = await tx.select({ id: orderItems.id }).from(orderItems)
+        .where(and(eq(orderItems.modelId, color.modelId), eq(orderItems.color, color.color))).limit(1)
+      const [usedExchange] = await tx.select({ id: orderExchanges.id }).from(orderExchanges)
+        .where(sql`(${orderExchanges.returnedModelId} = ${color.modelId} AND ${orderExchanges.returnedColor} = ${color.color}) OR (${orderExchanges.newModelId} = ${color.modelId} AND ${orderExchanges.newColor} = ${color.color})`).limit(1)
+      if (usedItem || usedExchange) throw new UserError('لا يمكن حذف لون مرتبط بطلب سابق حتى لا يتأثر سجل المخزون. يمكنك إبقاء اللون وتصفير كميته.')
+      await tx.delete(modelColors).where(eq(modelColors.id, cid))
+    })
   })
 }
 
@@ -182,6 +240,7 @@ type CourierInput = {
   phone?: string
   feeWestBank: number
   feeJerusalem: number
+  feeArea67: number
   feeInside: number
   active?: boolean
   integrationKey?: string
@@ -196,6 +255,7 @@ function courierValues(input: CourierInput) {
     phone: text(input.phone, 40) || null,
     feeWestBank: amount(input.feeWestBank),
     feeJerusalem: amount(input.feeJerusalem),
+    feeArea67: amount(input.feeArea67),
     feeInside: amount(input.feeInside),
     active: input.active ?? true,
     integrationKey: text(input.integrationKey, 50).toLowerCase().replace(/[^a-z0-9_-]/g, '') || null,
@@ -231,7 +291,7 @@ export async function deleteCourier(courierId: number) {
   return run(async () => {
     const cid = id(courierId)
     await db.transaction(async (tx) => {
-      await tx.update(orders).set({ courierId: null, courierFee: 0 }).where(eq(orders.courierId, cid))
+      await tx.update(orders).set({ courierId: null }).where(eq(orders.courierId, cid))
       await tx.delete(couriers).where(eq(couriers.id, cid))
     })
   })
@@ -244,10 +304,12 @@ export type OrderInput = {
   phone: string
   region: string
   city: string
+  area: string
   address?: string
   courierId?: number | null
   trackingNumber?: string
   notes?: string
+  discount?: number
   items: { modelId: number; color: string; quantity: number }[]
   exchanges: {
     returnedModelId: number
@@ -266,19 +328,35 @@ async function adjustOrderStock(tx: Tx, orderId: number, direction: 1 | -1) {
     tx.select().from(orderItems).where(eq(orderItems.orderId, orderId)),
     tx.select().from(orderExchanges).where(eq(orderExchanges.orderId, orderId)),
   ])
-  const changes: { modelId: number | null; color: string | null; delta: number }[] = [
-    ...items.map((i) => ({ modelId: i.modelId, color: i.color, delta: direction * i.quantity })),
-    ...exchanges.flatMap((e) => [
-      { modelId: e.newModelId, color: e.newColor, delta: direction * e.newQty },
-      { modelId: e.returnedModelId, color: e.returnedColor, delta: -direction * e.returnedQty },
-    ]),
-  ]
-  for (const change of changes) {
-    if (!change.modelId || !change.color) continue
-    await tx
-      .update(modelColors)
-      .set({ stock: sql`greatest(${modelColors.stock} + ${change.delta}, 0)` })
-      .where(sql`${modelColors.modelId} = ${change.modelId} and ${modelColors.color} = ${change.color}`)
+  const changes = new Map<string, { modelId: number; color: string; delta: number }>()
+  const add = (modelId: number | null, color: string | null, delta: number) => {
+    if (!modelId) return
+    if (!color) throw new UserError('لا يمكن تحديث المخزون لأن أحد أسطر الطلب لا يحتوي على لون محفوظ.')
+    const key = `${modelId}\u0000${color}`
+    const current = changes.get(key)
+    if (current) current.delta += delta
+    else changes.set(key, { modelId, color, delta })
+  }
+  for (const item of items) add(item.modelId, item.color, direction * item.quantity)
+  for (const exchange of exchanges) {
+    add(exchange.newModelId, exchange.newColor, direction * exchange.newQty)
+    add(exchange.returnedModelId, exchange.returnedColor, -direction * exchange.returnedQty)
+  }
+  for (const change of changes.values()) {
+    if (change.delta === 0) continue
+    const updated = await tx.update(modelColors)
+      .set({ stock: sql`${modelColors.stock} + ${change.delta}` })
+      .where(and(
+        eq(modelColors.modelId, change.modelId),
+        eq(modelColors.color, change.color),
+        sql`${modelColors.stock} >= ${Math.max(0, -change.delta)}`,
+      ))
+      .returning({ id: modelColors.id })
+    if (updated.length !== 1) {
+      throw new UserError(change.delta < 0
+        ? 'المخزون غير كافٍ لإعادة تفعيل الطلب. راجعي الكميات المتوفرة أولاً.'
+        : 'تعذر العثور على لون مرتبط بالطلب لإرجاعه إلى المخزون.')
+    }
   }
 }
 
@@ -287,10 +365,14 @@ export async function createOrder(input: OrderInput) {
     const customerName = text(input.customerName)
     const phone = text(input.phone, 30)
     const city = text(input.city, 80)
+    const area = text(input.area, 100)
     const region = text(input.region, 20)
     if (!customerName) throw new UserError('اسم العميلة مطلوب')
     if (!/^[0-9+\-\s]{7,20}$/.test(phone)) throw new UserError('رقم الهاتف غير صالح')
     if (!city) throw new UserError('المدينة مطلوبة')
+    const expectedRegion = CITY_REGIONS[city]
+    if (expectedRegion && expectedRegion !== region) throw new UserError('منطقة التوصيل لا تتوافق مع المدينة المحددة')
+    if (!area) throw new UserError('المنطقة/الحي مطلوب')
     if (!isRegion(region)) throw new UserError('اختاري منطقة التوصيل')
 
     const items = (input.items ?? []).map((i) => ({
@@ -314,6 +396,7 @@ export async function createOrder(input: OrderInput) {
     if (totalQty > MAX_QTY) throw new UserError(`الحد الأقصى ${MAX_QTY} قطعة في الطلب الواحد`)
 
     const courierId = input.courierId ? id(input.courierId) : null
+    const discount = amount(input.discount ?? 0)
     let createdOrderId: number | null = null
     let shouldAutoDispatch = false
 
@@ -372,8 +455,8 @@ export async function createOrder(input: OrderInput) {
         const replacement = getModel(ex.newModelId)
         const newColor = getColor(ex.newModelId, ex.newColor, true)!
         need(newColor.id, ex.newQty)
-        const returnedColor = getColor(ex.returnedModelId, ex.returnedColor, false)
-        if (returnedColor) need(returnedColor.id, -ex.returnedQty)
+        const returnedColor = getColor(ex.returnedModelId, ex.returnedColor, true)!
+        need(returnedColor.id, -ex.returnedQty)
         const diff = replacement.price * ex.newQty - returned.price * ex.returnedQty
         exchangeDiff += diff
         costTotal += replacement.cost * ex.newQty - returned.cost * ex.returnedQty
@@ -411,6 +494,9 @@ export async function createOrder(input: OrderInput) {
       }
 
       const shippingFee = REGIONS[region].fee
+      const discountableSubtotal = itemsTotal + Math.max(0, exchangeDiff)
+      const orderSubtotal = Math.max(itemsTotal + shippingFee + exchangeDiff, 0)
+      if (discount > discountableSubtotal) throw new UserError('الخصم لا يمكن أن يتجاوز قيمة المنتجات، ولا يشمل رسوم التوصيل')
       const [order] = await tx
         .insert(orders)
         .values({
@@ -418,14 +504,16 @@ export async function createOrder(input: OrderInput) {
           phone,
           region,
           city,
+          area,
           address: text(input.address, 300) || null,
           courierId,
           trackingNumber: text(input.trackingNumber, 80) || null,
           notes: text(input.notes, 500) || null,
           itemsTotal,
           shippingFee,
+          discount,
           exchangeDiff,
-          total: Math.max(itemsTotal + shippingFee + exchangeDiff, 0),
+          total: Math.max(orderSubtotal - discount, 0),
           costTotal,
           courierFee: courierFeeFor(courierRows[0], region),
         })
@@ -451,12 +539,23 @@ export async function updateOrderStatus(orderId: number, status: string) {
     if (!isStatus(status)) throw new UserError('حالة غير صالحة')
     const oid = id(orderId)
     await db.transaction(async (tx) => {
-      const [current] = await tx.select().from(orders).where(eq(orders.id, oid))
+      const [current] = await tx.select().from(orders).where(eq(orders.id, oid)).for('update')
       if (!current) throw new UserError('الطلب غير موجود')
       const wasInactive = INACTIVE_STATUSES.includes(current.status as StatusKey)
       const isInactive = INACTIVE_STATUSES.includes(status)
+      if (wasInactive && status !== current.status) {
+        throw new UserError('لا يمكن تغيير حالة طلب ملغي أو مرتجع. أنشئي طلباً جديداً بعد مراجعة المخزون.')
+      }
+      if (current.status === 'shipped' && !['shipped', 'delivered', 'returned'].includes(status)) {
+        throw new UserError('الطلب خرج للتوصيل؛ لا يمكن إعادته إلى التجهيز أو إلغاؤه. إذا عاد الطرد فعلياً، اختاري حالة "راجع".')
+      }
+      if (current.status === 'delivered' && !['delivered', 'returned'].includes(status)) {
+        throw new UserError('الطلب تم تسليمه؛ لا يمكن إلغاءه أو إعادته إلى التجهيز. عند استلام المرتجع اختاري حالة "راجع".')
+      }
+      if (current.status === 'preparing' && status === 'returned') {
+        throw new UserError('الطلب لم يغادر المستودع بعد؛ اختاري حالة "ملغي" إذا لم يعد مطلوباً.')
+      }
       if (!wasInactive && isInactive) await adjustOrderStock(tx, oid, 1)
-      if (wasInactive && !isInactive) await adjustOrderStock(tx, oid, -1)
 
       const now = new Date()
       const leftWarehouse = status === 'shipped' || status === 'delivered' || status === 'returned'
@@ -496,7 +595,7 @@ export async function updateShipping(
         syncStatus: courierId === current.courierId ? current.syncStatus : 'not_configured',
         syncError: courierId === current.courierId ? current.syncError : null,
         shippingFee,
-        total: Math.max(current.itemsTotal + shippingFee + current.exchangeDiff, 0),
+        total: Math.max(current.itemsTotal + shippingFee + current.exchangeDiff - current.discount, 0),
         courierFee: courierFeeFor(courier, region),
       })
       .where(eq(orders.id, oid))
@@ -504,7 +603,7 @@ export async function updateShipping(
       const { dispatchShipment } = await import('@/lib/shipping/dispatch')
       await dispatchShipment(oid)
     }
-  }, 'staff')
+  })
 }
 
 export async function retryShippingSync(orderId: number) {
@@ -518,7 +617,7 @@ export async function retryShippingSync(orderId: number) {
     await dispatchShipment(oid)
     const [updated] = await db.select().from(orders).where(eq(orders.id, oid))
     if (updated?.syncStatus === 'failed') throw new UserError(updated.syncError || 'تعذر إرسال الشحنة')
-  }, 'staff')
+  })
 }
 
 export async function bulkShip(orderIds: number[]) {
@@ -535,16 +634,19 @@ export async function bulkShip(orderIds: number[]) {
     // Dispatch is best-effort: orders remain saved even if a carrier API is temporarily unavailable.
     const { dispatchShipment } = await import('@/lib/shipping/dispatch')
     for (const order of eligible) await dispatchShipment(order.id)
-  }, 'staff')
+  })
 }
 
 export async function deleteOrder(orderId: number) {
   return run(async () => {
     const oid = id(orderId)
     await db.transaction(async (tx) => {
-      const [current] = await tx.select().from(orders).where(eq(orders.id, oid))
+      const [current] = await tx.select().from(orders).where(eq(orders.id, oid)).for('update')
       if (!current) return
-      if (!INACTIVE_STATUSES.includes(current.status as StatusKey)) await adjustOrderStock(tx, oid, 1)
+      if (current.status !== 'preparing' && !INACTIVE_STATUSES.includes(current.status as StatusKey)) {
+        throw new UserError('لا يمكن حذف طلب خرج للتوصيل أو تم تسليمه. إذا عاد الطرد فعلياً، غيّري حالته إلى "راجع" للحفاظ على سجل الطلب والمخزون.')
+      }
+      if (current.status === 'preparing') await adjustOrderStock(tx, oid, 1)
       await tx.delete(orderItems).where(eq(orderItems.orderId, oid))
       await tx.delete(orderExchanges).where(eq(orderExchanges.orderId, oid))
       await tx.delete(orders).where(eq(orders.id, oid))
