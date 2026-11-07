@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto'
 import { headers } from 'next/headers'
 import { db } from '@/lib/db'
 import { coupons, modelColors, models, orderItems, orders } from '@/lib/db/schema'
-import { REGIONS, isRegion } from '@/lib/constants'
+import { CITY_REGIONS, REGIONS, isRegion } from '@/lib/constants'
 
 export type StoreOrderResult = { ok: true; orderId: number } | { ok: false; error: string }
 
@@ -34,7 +34,7 @@ export async function checkStoreCoupon(codeInput: string, subtotalInput: number)
     if (!/^[A-Z0-9_-]{3,32}$/.test(code) || !Number.isFinite(subtotal) || subtotal <= 0) {
       return { ok: false as const, error: 'أدخلي كود خصم صحيحاً.' }
     }
-    const [coupon] = await db.select().from(coupons).where(eq(coupons.code, code)).limit(1)
+    const [coupon] = await db.select().from(coupons).where(sql`upper(${coupons.code}) = ${code}`).limit(1)
     const unavailable = couponAvailability(coupon)
     if (unavailable) return { ok: false as const, error: unavailable }
     return { ok: true as const, code, discount: couponDiscount(coupon!, subtotal), discountType: coupon!.discountType, discountValue: coupon!.discountValue }
@@ -65,7 +65,11 @@ export async function submitStoreOrder(input: {
     const region = clean(input.region, 20)
     const paymentMethod = input.paymentMethod
     if (!customerName || !/^[0-9+\-\s]{7,20}$/.test(phone) || !city || !area || !address || !isRegion(region)) {
-      return { ok: false, error: 'يرجى تعبئة الاسم والهاتف والمدينة والعنوان واختيار منطقة التوصيل بشكل صحيح.' }
+      return { ok: false, error: 'يرجى تعبئة الاسم والهاتف والمدينة والمنطقة/الحي والعنوان واختيار منطقة التوصيل بشكل صحيح.' }
+    }
+    const expectedRegion = CITY_REGIONS[city]
+    if (expectedRegion && expectedRegion !== region) {
+      return { ok: false, error: 'منطقة التوصيل لا تتوافق مع المدينة المحددة. راجعي المدينة ومنطقة التوصيل.' }
     }
     if (paymentMethod !== 'cod') return { ok: false, error: 'الدفع المسبق غير متاح حالياً. اختاري الدفع عند الاستلام.' }
     const checkoutRequestKey = clean(input.checkoutRequestKey, 36)
@@ -140,7 +144,7 @@ export async function submitStoreOrder(input: {
       const couponCode = clean(input.couponCode, 32).toUpperCase()
       let discount = 0
       if (couponCode) {
-        const [coupon] = await tx.select().from(coupons).where(eq(coupons.code, couponCode)).for('update')
+        const [coupon] = await tx.select().from(coupons).where(sql`upper(${coupons.code}) = ${couponCode}`).for('update')
         const unavailable = couponAvailability(coupon)
         if (unavailable) throw new Error(unavailable)
         discount = couponDiscount(coupon!, itemsTotal)
