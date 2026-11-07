@@ -494,7 +494,7 @@ export async function createOrder(input: OrderInput) {
       }
 
       const shippingFee = REGIONS[region].fee
-      const discountableSubtotal = itemsTotal + exchangeRows.reduce((sum, exchange) => sum + exchange.newPrice * exchange.newQty, 0)
+      const discountableSubtotal = itemsTotal + Math.max(0, exchangeDiff)
       const orderSubtotal = Math.max(itemsTotal + shippingFee + exchangeDiff, 0)
       if (discount > discountableSubtotal) throw new UserError('الخصم لا يمكن أن يتجاوز قيمة المنتجات، ولا يشمل رسوم التوصيل')
       const [order] = await tx
