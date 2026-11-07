@@ -18,8 +18,8 @@ export function CouponManager({ coupons }: { coupons: Coupon[] }) {
         code: form.code,
         discountType: form.discountType,
         discountValue: Number(form.discountValue),
-        startsAt: form.startsAt || undefined,
-        expiresAt: form.expiresAt || undefined,
+        startsAt: form.startsAt ? new Date(form.startsAt).toISOString() : undefined,
+        expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : undefined,
         usageLimit: form.usageLimit ? Number(form.usageLimit) : null,
       })
       if (!result.ok) { setError(result.error); return }
