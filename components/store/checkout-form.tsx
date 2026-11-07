@@ -90,6 +90,7 @@ export default function CheckoutForm({ products }: { products: Product[] }) {
         </div>
         {couponMessage && <p role="status" className={`mt-2 text-sm ${appliedCoupon?'text-green-700':'text-red-700'}`}>{couponMessage}</p>}
       </section>
+      <div className="rounded-xl border border-[#e9e2d7] bg-[#faf8f4] p-4 text-sm leading-7">بإتمام الطلب، يرجى الاطلاع على <Link href="/policies" className="font-semibold text-[#765637] underline underline-offset-4">سياسة التبديل والترجيع</Link>. طلب التبديل أو الإرجاع يُقدّم خلال 24 ساعة من استلام الطرد.</div>
       <h2 className="pt-3 text-lg font-bold">طريقة الدفع</h2>
       <div className="rounded-xl border border-[#765637]/20 bg-[#faf8f4] p-4"><b>الدفع عند الاستلام</b><p className="mt-1 text-sm text-stone-500">ادفعي عند وصول الطلب.</p></div>
       {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
