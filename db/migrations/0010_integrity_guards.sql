@@ -23,6 +23,7 @@ END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS model_colors_model_color_normalized_uq
   ON public.model_colors (model_id, lower(btrim(color)));
 
-CREATE UNIQUE INDEX IF NOT EXISTS couriers_integration_key_uq
-  ON public.couriers (integration_key)
+DROP INDEX IF EXISTS public.couriers_integration_key_uq;
+CREATE UNIQUE INDEX couriers_integration_key_uq
+  ON public.couriers (lower(btrim(integration_key)))
   WHERE integration_key IS NOT NULL AND btrim(integration_key) <> '';
