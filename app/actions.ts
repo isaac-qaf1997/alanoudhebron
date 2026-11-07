@@ -6,6 +6,7 @@ import { authorizeRole, type CurrentUser } from '@/lib/auth/session'
 import { db } from '@/lib/db'
 import {
   couriers,
+  coupons,
   modelColors,
   models,
   orderExchanges,
@@ -78,6 +79,45 @@ async function run(
     console.error('[actions]', error)
     return { ok: false, error: 'حدث خطأ غير متوقع، حاولي مرة أخرى' }
   }
+}
+
+
+/* -------------------------------- Coupons ---------------------------------- */
+
+export type CouponInput = {
+  code: string
+  discountType: 'fixed' | 'percentage'
+  discountValue: number
+  startsAt?: string
+  expiresAt?: string
+  usageLimit?: number | null
+}
+
+export async function createCoupon(input: CouponInput) {
+  return run(async () => {
+    const code = text(input.code, 32).toUpperCase()
+    if (!/^[A-Z0-9_-]{3,32}$/.test(code)) throw new UserError('الكود يجب أن يتكون من 3 إلى 32 حرفاً أو رقماً')
+    if (input.discountType !== 'fixed' && input.discountType !== 'percentage') throw new UserError('نوع الخصم غير صالح')
+    const discountValue = amount(input.discountValue)
+    if (discountValue <= 0 || (input.discountType === 'percentage' && discountValue > 100)) {
+      throw new UserError(input.discountType === 'percentage' ? 'النسبة يجب أن تكون بين 1 و100%' : 'قيمة الخصم يجب أن تكون أكبر من صفر')
+    }
+    const startsAt = input.startsAt ? new Date(input.startsAt) : null
+    const expiresAt = input.expiresAt ? new Date(input.expiresAt) : null
+    if ((startsAt && Number.isNaN(startsAt.getTime())) || (expiresAt && Number.isNaN(expiresAt.getTime()))) throw new UserError('تاريخ الكوبون غير صالح')
+    if (startsAt && expiresAt && expiresAt <= startsAt) throw new UserError('تاريخ الانتهاء يجب أن يكون بعد تاريخ البداية')
+    const usageLimit = input.usageLimit == null || input.usageLimit === 0 ? null : qty(input.usageLimit)
+    const [existing] = await db.select({ id: coupons.id }).from(coupons).where(eq(coupons.code, code)).limit(1)
+    if (existing) throw new UserError('هذا الكود موجود مسبقاً')
+    await db.insert(coupons).values({ code, discountType: input.discountType, discountValue, startsAt, expiresAt, usageLimit })
+  })
+}
+
+export async function setCouponActive(couponId: number, active: boolean) {
+  return run(async () => {
+    if (typeof active !== 'boolean') throw new UserError('حالة الكوبون غير صالحة')
+    await db.update(coupons).set({ active }).where(eq(coupons.id, id(couponId)))
+  })
 }
 
 /* ---------------------------------- Models --------------------------------- */
