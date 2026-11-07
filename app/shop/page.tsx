@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { asc, desc } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { models, modelColors } from '@/lib/db/schema'
+import { getCurrentUser } from '@/lib/auth/session'
 
 export const metadata = {
   title: 'العنود للزي شرعي | أثواب وعبايات وفساتين تطريز',
@@ -27,6 +28,7 @@ function BrandMark() {
 }
 
 export default async function ShopPage() {
+  const currentUser = await getCurrentUser()
   const [products, colors] = await Promise.all([
     db.select({ id: models.id, name: models.name, price: models.price, imageUrl: models.imageUrl }).from(models).orderBy(desc(models.createdAt)),
     db.select({ modelId: modelColors.modelId, color: modelColors.color, stock: modelColors.stock, imageUrl: modelColors.imageUrl }).from(modelColors).orderBy(asc(modelColors.id)),
@@ -43,6 +45,7 @@ export default async function ShopPage() {
           <nav className="flex items-center gap-3 text-xs text-[#62584c] sm:gap-5 sm:text-sm">
             <Link href="/shop" className="transition hover:text-[#9b7745]">المتجر</Link>
             <Link href="/cart" className="transition hover:text-[#9b7745]">السلة</Link>
+            {currentUser?.role === 'admin' ? <Link href="/admin" className="transition hover:text-[#9b7745]">لوحة الإدارة</Link> : null}
           </nav>
           <Link href="/shop" aria-label="العنود للزي شرعي - الصفحة الرئيسية" className="text-center">
             <span className="block text-xl font-bold tracking-wide text-[#211d18] sm:text-2xl">العنود</span>
