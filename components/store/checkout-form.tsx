@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { submitStoreOrder } from '@/app/store-actions'
+import { checkStoreCoupon, submitStoreOrder } from '@/app/store-actions'
 import { REGIONS } from '@/lib/constants'
 
 type Product = { id: number; name: string; price: number; colors: { color: string; stock: number }[] }
@@ -18,6 +18,10 @@ export default function CheckoutForm({ products }: { products: Product[] }) {
   const requestKey = useRef<string | null>(null)
   const [error, setError] = useState('')
   const [done, setDone] = useState<number | null>(null)
+  const [couponCode, setCouponCode] = useState('')
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null)
+  const [couponMessage, setCouponMessage] = useState('')
+  const [couponBusy, setCouponBusy] = useState(false)
   const [form, setForm] = useState({ customerName: '', phone: '', city: '', area: '', region: 'west_bank', address: '', paymentMethod: 'cod' as 'cod' })
   useEffect(() => {
     try { setItems(JSON.parse(localStorage.getItem(KEY) || '[]')) } catch { setItems([]) }
@@ -27,7 +31,18 @@ export default function CheckoutForm({ products }: { products: Product[] }) {
     return sum + (product?.price || 0) * line.quantity
   }, 0), [items, products])
   const shippingFee = REGIONS[form.region as keyof typeof REGIONS]?.fee ?? 0
-  const orderTotal = itemsTotal + shippingFee
+  const orderTotal = itemsTotal + shippingFee - (appliedCoupon?.discount ?? 0)
+  async function applyCoupon() {
+    setCouponBusy(true); setCouponMessage('')
+    try {
+      const result = await checkStoreCoupon(couponCode, itemsTotal)
+      if (!result.ok) { setAppliedCoupon(null); setCouponMessage(result.error); return }
+      setAppliedCoupon({ code: result.code, discount: result.discount })
+      setCouponMessage('تم تطبيق كود الخصم بنجاح.')
+    } catch {
+      setAppliedCoupon(null); setCouponMessage('تعذر التحقق من الكود حالياً.')
+    } finally { setCouponBusy(false) }
+  }
   function update(field: string, value: string) { setForm(current => ({ ...current, [field]: value })) }
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -40,7 +55,7 @@ export default function CheckoutForm({ products }: { products: Product[] }) {
         requestKey.current = sessionStorage.getItem(storageKey) || crypto.randomUUID()
         sessionStorage.setItem(storageKey, requestKey.current)
       }
-      const result = await submitStoreOrder({ ...form, items, checkoutRequestKey: requestKey.current })
+      const result = await submitStoreOrder({ ...form, items, couponCode: appliedCoupon?.code, checkoutRequestKey: requestKey.current })
       if (!result.ok) { setError(result.error); return }
       localStorage.removeItem(KEY)
       sessionStorage.removeItem('alanoud-checkout-request-v1')
@@ -66,11 +81,19 @@ export default function CheckoutForm({ products }: { products: Product[] }) {
       </div>
       <label className="block text-sm">المنطقة / الحي<input required maxLength={100} value={form.area} onChange={e=>update('area',e.target.value)} className="mt-2 w-full rounded-xl border p-3"/></label>
       <label className="block text-sm">العنوان بالتفصيل<textarea required value={form.address} onChange={e=>update('address',e.target.value)} className="mt-2 w-full rounded-xl border p-3"/></label>
+      <section className="rounded-xl border p-4">
+        <h2 className="font-semibold">عندك كود خصم؟</h2>
+        <div className="mt-3 flex gap-2">
+          <input value={couponCode} onChange={e=>{setCouponCode(e.target.value.toUpperCase());setAppliedCoupon(null);setCouponMessage('')}} placeholder="أدخلي كود الخصم" maxLength={32} className="min-w-0 flex-1 rounded-lg border px-3 py-2 uppercase"/>
+          <button type="button" disabled={couponBusy || !couponCode.trim()} onClick={applyCoupon} className="rounded-lg bg-[#765637] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{couponBusy?'جارٍ التحقق...':'تطبيق'}</button>
+        </div>
+        {couponMessage && <p role="status" className={`mt-2 text-sm ${appliedCoupon?'text-green-700':'text-red-700'}`}>{couponMessage}</p>}
+      </section>
       <h2 className="pt-3 text-lg font-bold">طريقة الدفع</h2>
       <div className="rounded-xl border border-[#765637]/20 bg-[#faf8f4] p-4"><b>الدفع عند الاستلام</b><p className="mt-1 text-sm text-stone-500">ادفعي عند وصول الطلب.</p></div>
       {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       <button disabled={busy} className="w-full rounded-full bg-[#765637] px-6 py-4 font-bold text-white disabled:opacity-50">{busy?'جارٍ إرسال الطلب...':'تأكيد الطلب'}</button>
     </div>
-    <aside className="h-fit rounded-3xl bg-white p-6"><h2 className="text-xl font-bold">ملخص الطلب</h2>{items.map((line,i)=>{const p=products.find(x=>x.id===line.modelId);return <div key={i} className="flex justify-between gap-3 border-b py-3 text-sm"><span>{p?.name} · {line.color} × {line.quantity}</span><b>{((p?.price||0)*line.quantity).toFixed(2)} ₪</b></div>})}<div className="flex justify-between pt-5 text-sm"><span>مجموع المنتجات</span><span>{itemsTotal.toFixed(2)} ₪</span></div><div className="mt-2 flex justify-between text-sm"><span>رسوم التوصيل ({REGIONS[form.region as keyof typeof REGIONS]?.label || "المنطقة المحددة"})</span><span>{shippingFee.toFixed(2)} ₪</span></div><div className="mt-4 flex justify-between border-t pt-4 text-lg font-bold"><span>الإجمالي عند الاستلام</span><span>{orderTotal.toFixed(2)} ₪</span></div><p className="mt-2 text-xs leading-6 text-stone-500">رسوم التوصيل محسوبة حسب منطقة التوصيل المختارة، وقد نؤكد تفاصيل العنوان معك قبل الشحن.</p></aside>
+    <aside className="h-fit rounded-3xl bg-white p-6"><h2 className="text-xl font-bold">ملخص الطلب</h2>{items.map((line,i)=>{const p=products.find(x=>x.id===line.modelId);return <div key={i} className="flex justify-between gap-3 border-b py-3 text-sm"><span>{p?.name} · {line.color} × {line.quantity}</span><b>{((p?.price||0)*line.quantity).toFixed(2)} ₪</b></div>})}<div className="flex justify-between pt-5 text-sm"><span>مجموع المنتجات</span><span>{itemsTotal.toFixed(2)} ₪</span></div><div className="mt-2 flex justify-between text-sm"><span>رسوم التوصيل ({REGIONS[form.region as keyof typeof REGIONS]?.label || "المنطقة المحددة"})</span><span>{shippingFee.toFixed(2)} ₪</span></div>{appliedCoupon && <div className="mt-2 flex justify-between text-sm text-green-700"><span>خصم الكود ({appliedCoupon.code})</span><span>−{appliedCoupon.discount.toFixed(2)} ₪</span></div>}<div className="mt-4 flex justify-between border-t pt-4 text-lg font-bold"><span>الإجمالي عند الاستلام</span><span>{orderTotal.toFixed(2)} ₪</span></div><p className="mt-2 text-xs leading-6 text-stone-500">رسوم التوصيل محسوبة حسب منطقة التوصيل المختارة، وقد نؤكد تفاصيل العنوان معك قبل الشحن.</p></aside>
   </form>
 }
