@@ -415,7 +415,7 @@ export async function createOrder(input: OrderInput) {
       }
 
       const shippingFee = REGIONS[region].fee
-      const orderSubtotal = itemsTotal + shippingFee + exchangeDiff
+      const orderSubtotal = Math.max(itemsTotal + shippingFee + exchangeDiff, 0)
       if (discount > orderSubtotal) throw new UserError('الخصم لا يمكن أن يتجاوز إجمالي الطلب')
       const [order] = await tx
         .insert(orders)
