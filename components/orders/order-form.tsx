@@ -413,7 +413,7 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
             min={0}
             max={subtotal}
             step="0.5"
-            value={discount}
+            value={appliedDiscount}
             onChange={(e) => setDiscount(Math.min(subtotal, Math.max(0, Number(e.target.value) || 0)))}
           />
           <p className="text-xs text-muted-foreground">الخصم يُطرح من المبلغ النهائي، ويظهر في تفاصيل الطلب. شركة التوصيل تستلم مبلغ التحصيل النهائي فقط.</p>
