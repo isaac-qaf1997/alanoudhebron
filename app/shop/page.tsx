@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { asc, desc } from 'drizzle-orm'
-import { Facebook, Instagram, MessageCircle } from 'lucide-react'
 import { db } from '@/lib/db'
 import { models, modelColors } from '@/lib/db/schema'
 
@@ -10,9 +9,9 @@ export const metadata = {
 }
 
 const socialLinks = [
-  { href: 'https://www.facebook.com/Alanoudhebron/', label: 'فيسبوك', Icon: Facebook },
-  { href: 'https://www.instagram.com/alanoudhebron/', label: 'إنستغرام', Icon: Instagram },
-  { href: 'https://wa.me/970569388780', label: 'واتساب', Icon: MessageCircle },
+  { href: 'https://www.facebook.com/Alanoudhebron/', label: 'فيسبوك', mark: 'f' },
+  { href: 'https://www.instagram.com/alanoudhebron/', label: 'إنستغرام', mark: '◎' },
+  { href: 'https://wa.me/970569388780', label: 'واتساب', mark: 'واتساب' },
 ]
 
 export default async function ShopPage() {
@@ -38,9 +37,9 @@ export default async function ShopPage() {
             <span className="mt-0.5 block text-[11px] font-semibold tracking-[0.16em] text-[#62584c] sm:text-xs">للزي الشرعي</span>
           </Link>
           <div className="flex items-center justify-end gap-3 text-[#8a6841]">
-            {socialLinks.map(({ href, label, Icon }) => (
+            {socialLinks.map(({ href, label, mark }) => (
               <a key={label} href={href} target="_blank" rel="noreferrer" aria-label={label} title={label} className="rounded-full p-2 transition hover:bg-[#f4eee5] hover:text-[#5e4528]">
-                <Icon size={18} strokeWidth={1.8} />
+                <span className="text-sm font-bold">{mark}</span>
               </a>
             ))}
           </div>
@@ -81,7 +80,7 @@ export default async function ShopPage() {
       <footer className="border-t border-[#e9e2d7] bg-white px-5 py-8 text-center text-sm text-[#8b8175]">
         <p className="font-semibold text-[#8a6841]">العنود للزي الشرعي · الخليل</p>
         <div className="mt-4 flex items-center justify-center gap-4">
-          {socialLinks.map(({ href, label, Icon }) => <a key={label} href={href} target="_blank" rel="noreferrer" aria-label={label} className="rounded-full border border-[#e9e2d7] p-2 text-[#8a6841] transition hover:bg-[#f7f2ea]"><Icon size={18} /></a>)}
+          {socialLinks.map(({ href, label, Icon }) => <a key={label} href={href} target="_blank" rel="noreferrer" aria-label={label} className="rounded-full border border-[#e9e2d7] p-2 text-[#8a6841] transition hover:bg-[#f7f2ea]"><span className="text-sm font-bold">{mark}</span></a>)}
         </div>
         <Link href="/policies" className="mt-4 inline-block text-[#765637] underline underline-offset-4">سياسة التبديل والترجيع</Link>
       </footer>
