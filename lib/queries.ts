@@ -38,7 +38,7 @@ export async function getCouriers(): Promise<CourierPublic[]> {
   return rows.map(({ apiKeyEncrypted, secretTokenEncrypted, integrationKey, ...courier }) => ({
     id: courier.id, name: courier.name, phone: courier.phone, integrationKey,
     feeWestBank: courier.feeWestBank, feeJerusalem: courier.feeJerusalem,
-    feeInside: courier.feeInside, active: courier.active, createdAt: courier.createdAt,
+    feeArea67: courier.feeArea67, feeInside: courier.feeInside, active: courier.active, createdAt: courier.createdAt,
     apiBaseUrl: courier.apiBaseUrl, apiEnabled: courier.apiEnabled,
     sendOnOrderCreate: courier.sendOnOrderCreate,
     hasApiKey: Boolean(apiKeyEncrypted), hasSecretToken: Boolean(secretTokenEncrypted),
