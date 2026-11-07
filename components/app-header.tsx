@@ -1,6 +1,6 @@
 'use client'
 
-import { Boxes, ClipboardList, LayoutGrid, Package, TicketPercent, Truck } from 'lucide-react'
+import { Boxes, ClipboardList, LayoutGrid, Package, Store, TicketPercent, Truck } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -13,6 +13,7 @@ const NAV = [
   { href: '/inventory', label: 'المخزون والموديلات', icon: Boxes },
   { href: '/coupons', label: 'أكواد الخصم', icon: TicketPercent },
   { href: '/delivery-sheet', label: 'كشف التوصيل اليومي', icon: ClipboardList },
+  { href: '/shop', label: 'المتجر', icon: Store },
 ]
 
 export function AppHeader({ user, activeCouriers }: { user: CurrentUser; activeCouriers: number }) {
