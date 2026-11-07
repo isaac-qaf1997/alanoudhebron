@@ -61,7 +61,7 @@ export const couriers = pgTable('couriers', {
   sendOnOrderCreate: boolean('send_on_order_create').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
-  integrationKeyUnique: uniqueIndex('couriers_integration_key_uq').on(table.integrationKey).where(sql`${table.integrationKey} IS NOT NULL AND btrim(${table.integrationKey}) <> ''`),
+  integrationKeyUnique: uniqueIndex('couriers_integration_key_uq').on(sql`lower(btrim(${table.integrationKey}))`).where(sql`${table.integrationKey} IS NOT NULL AND btrim(${table.integrationKey}) <> ''`),
 }))
 
 export const orders = pgTable('orders', {
