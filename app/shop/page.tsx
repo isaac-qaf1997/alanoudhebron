@@ -36,7 +36,7 @@ export default async function ShopPage() {
           </Link>)}
         </div> : <div className="rounded-2xl border border-dashed border-[#d8cbbb] bg-white p-12 text-center text-[#766d62]">لا توجد منتجات متاحة للبيع حالياً. ستظهر المنتجات هنا بعد إضافتها وتحديث مخزونها من لوحة الإدارة.</div>}
       </section>
-      <footer className="border-t border-[#e9e2d7] bg-white px-5 py-8 text-center text-sm text-[#8b8175]">العنود للزي الشرعي · الخليل</footer>
+      <footer className="border-t border-[#e9e2d7] bg-white px-5 py-8 text-center text-sm text-[#8b8175]"><p>العنود للزي الشرعي · الخليل</p><Link href="/policies" className="mt-3 inline-block text-[#765637] underline underline-offset-4">سياسة التبديل والترجيع</Link></footer>
     </main>
   )
 }
