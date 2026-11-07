@@ -182,6 +182,7 @@ type CourierInput = {
   phone?: string
   feeWestBank: number
   feeJerusalem: number
+  feeArea67: number
   feeInside: number
   active?: boolean
   integrationKey?: string
@@ -196,6 +197,7 @@ function courierValues(input: CourierInput) {
     phone: text(input.phone, 40) || null,
     feeWestBank: amount(input.feeWestBank),
     feeJerusalem: amount(input.feeJerusalem),
+    feeArea67: amount(input.feeArea67),
     feeInside: amount(input.feeInside),
     active: input.active ?? true,
     integrationKey: text(input.integrationKey, 50).toLowerCase().replace(/[^a-z0-9_-]/g, '') || null,
@@ -248,6 +250,7 @@ export type OrderInput = {
   courierId?: number | null
   trackingNumber?: string
   notes?: string
+  discount?: number
   items: { modelId: number; color: string; quantity: number }[]
   exchanges: {
     returnedModelId: number
@@ -314,6 +317,7 @@ export async function createOrder(input: OrderInput) {
     if (totalQty > MAX_QTY) throw new UserError(`الحد الأقصى ${MAX_QTY} قطعة في الطلب الواحد`)
 
     const courierId = input.courierId ? id(input.courierId) : null
+    const discount = amount(input.discount ?? 0)
     let createdOrderId: number | null = null
     let shouldAutoDispatch = false
 
@@ -411,6 +415,8 @@ export async function createOrder(input: OrderInput) {
       }
 
       const shippingFee = REGIONS[region].fee
+      const orderSubtotal = itemsTotal + shippingFee + exchangeDiff
+      if (discount > orderSubtotal) throw new UserError('الخصم لا يمكن أن يتجاوز إجمالي الطلب')
       const [order] = await tx
         .insert(orders)
         .values({
@@ -424,8 +430,9 @@ export async function createOrder(input: OrderInput) {
           notes: text(input.notes, 500) || null,
           itemsTotal,
           shippingFee,
+          discount,
           exchangeDiff,
-          total: Math.max(itemsTotal + shippingFee + exchangeDiff, 0),
+          total: Math.max(orderSubtotal - discount, 0),
           costTotal,
           courierFee: courierFeeFor(courierRows[0], region),
         })
@@ -496,7 +503,7 @@ export async function updateShipping(
         syncStatus: courierId === current.courierId ? current.syncStatus : 'not_configured',
         syncError: courierId === current.courierId ? current.syncError : null,
         shippingFee,
-        total: Math.max(current.itemsTotal + shippingFee + current.exchangeDiff, 0),
+        total: Math.max(current.itemsTotal + shippingFee + current.exchangeDiff - current.discount, 0),
         courierFee: courierFeeFor(courier, region),
       })
       .where(eq(orders.id, oid))
