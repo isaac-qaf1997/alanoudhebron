@@ -49,6 +49,7 @@ export function OrderCard({ order, isAdmin }: { order: OrderDisplay; isAdmin: bo
             <span className="flex items-center gap-1">
               <MapPin className="size-3" aria-hidden="true" />
               {order.city}
+              {order.area ? ` — ${order.area}` : ''}
               {order.address ? ` — ${order.address}` : ''}
             </span>
             <span>{formatDateTime(order.createdAt)}</span>
