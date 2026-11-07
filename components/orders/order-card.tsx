@@ -96,6 +96,7 @@ export function OrderCard({ order, isAdmin }: { order: OrderDisplay; isAdmin: bo
           <span>
             توصيل {formatMoney(order.shippingFee)}
             {order.discount > 0 ? ` · خصم ${formatMoney(order.discount)}` : ''}
+            {order.couponCode ? ` · كود ${order.couponCode}` : ''}
             {order.notes ? ` · ${order.notes}` : ''}
           </span>
         </div>
