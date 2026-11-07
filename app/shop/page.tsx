@@ -80,7 +80,7 @@ export default async function ShopPage() {
       <footer className="border-t border-[#e9e2d7] bg-white px-5 py-8 text-center text-sm text-[#8b8175]">
         <p className="font-semibold text-[#8a6841]">العنود للزي الشرعي · الخليل</p>
         <div className="mt-4 flex items-center justify-center gap-4">
-          {socialLinks.map(({ href, label, Icon }) => <a key={label} href={href} target="_blank" rel="noreferrer" aria-label={label} className="rounded-full border border-[#e9e2d7] p-2 text-[#8a6841] transition hover:bg-[#f7f2ea]"><span className="text-sm font-bold">{mark}</span></a>)}
+          {socialLinks.map(({ href, label, mark }) => <a key={label} href={href} target="_blank" rel="noreferrer" aria-label={label} className="rounded-full border border-[#e9e2d7] p-2 text-[#8a6841] transition hover:bg-[#f7f2ea]"><span className="text-sm font-bold">{mark}</span></a>)}
         </div>
         <Link href="/policies" className="mt-4 inline-block text-[#765637] underline underline-offset-4">سياسة التبديل والترجيع</Link>
       </footer>
