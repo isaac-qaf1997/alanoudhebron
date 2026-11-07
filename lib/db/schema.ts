@@ -74,6 +74,7 @@ export const orders = pgTable('orders', {
   itemsTotal: money('items_total').notNull().default(0),
   shippingFee: money('shipping_fee').notNull().default(0),
   discount: money('discount').notNull().default(0),
+  couponCode: text('coupon_code'),
   exchangeDiff: money('exchange_diff').notNull().default(0),
   total: money('total').notNull().default(0),
   costTotal: money('cost_total').notNull().default(0),
@@ -92,6 +93,21 @@ export const orders = pgTable('orders', {
   lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({ checkoutRequestUnique: uniqueIndex('orders_checkout_request_key_uq').on(table.checkoutRequestKey).where(sql`${table.checkoutRequestKey} IS NOT NULL`) }))
+
+export const coupons = pgTable('coupons', {
+  id: serial('id').primaryKey(),
+  code: text('code').notNull().unique(),
+  discountType: text('discount_type').$type<'fixed' | 'percentage'>().notNull(),
+  discountValue: money('discount_value').notNull(),
+  active: boolean('active').notNull().default(true),
+  startsAt: timestamp('starts_at', { withTimezone: true }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  usageLimit: integer('usage_limit'),
+  usedCount: integer('used_count').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export type Coupon = typeof coupons.$inferSelect
 
 export const orderItems = pgTable('order_items', {
   id: serial('id').primaryKey(),
