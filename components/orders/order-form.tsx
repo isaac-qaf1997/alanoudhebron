@@ -63,7 +63,7 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
     0,
   )
   const shipping = customer.region ? REGIONS[customer.region].fee : 0
-  const discountableSubtotal = itemsTotal + exchanges.reduce((sum, e) => sum + priceOf(e.newModelId) * e.newQty, 0)
+  const discountableSubtotal = itemsTotal + Math.max(0, exchangeDiff)
   const subtotal = Math.max(itemsTotal + shipping + exchangeDiff, 0)
   const appliedDiscount = Math.min(discount, discountableSubtotal)
   const total = Math.max(subtotal - appliedDiscount, 0)
