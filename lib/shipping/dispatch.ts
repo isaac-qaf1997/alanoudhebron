@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull, lt, or } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { INACTIVE_STATUSES } from '@/lib/constants'
-import { couriers, orderItems, orders } from '@/lib/db/schema'
+import { couriers, orderExchanges, orderItems, orders } from '@/lib/db/schema'
 
 type CarrierConfig = { apiUrl: string; token: string; createPath: string }
 
@@ -72,8 +72,11 @@ export async function dispatchShipment(orderId: number) {
   if (!claim) return
 
   try {
-    const orderLines = await db.select({ quantity: orderItems.quantity }).from(orderItems).where(eq(orderItems.orderId, order.id))
-    const quantity = orderLines.reduce((sum, item) => sum + item.quantity, 0)
+    const [orderLines, exchangeLines] = await Promise.all([
+      db.select({ quantity: orderItems.quantity }).from(orderItems).where(eq(orderItems.orderId, order.id)),
+      db.select({ quantity: orderExchanges.newQty }).from(orderExchanges).where(eq(orderExchanges.orderId, order.id)),
+    ])
+    const quantity = [...orderLines, ...exchangeLines].reduce((sum, item) => sum + item.quantity, 0)
     if (quantity <= 0) throw new Error('Order has no shippable items')
     const codAmount = Math.max(Number(order.total) - Number(order.amountPaid || 0), 0)
     const response = await fetch(new URL(config.createPath, config.apiUrl), {

@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull, lt, or } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { INACTIVE_STATUSES } from '@/lib/constants'
-import { couriers, orderItems, orders } from '@/lib/db/schema'
+import { couriers, orderExchanges, orderItems, orders } from '@/lib/db/schema'
 
 const BASE = 'https://o.opost.ps'
 const BUSINESS_ID = process.env.OPOST_BUSINESS_ID || '586'
@@ -72,8 +72,12 @@ export async function dispatchOpostShipment(orderId: number) {
   try {
     if (!order.area) throw new Error('الطلب لا يحتوي على المنطقة/الحي بشكل منفصل؛ أضيفيها قبل إرسال الشحنة.')
     const location = await resolveLocation(order.city, order.area, token)
-    const items = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId))
-    const quantity = items.reduce((sum, item) => sum + item.quantity, 0)
+    const [items, exchangeItems] = await Promise.all([
+      db.select({ quantity: orderItems.quantity }).from(orderItems).where(eq(orderItems.orderId, orderId)),
+      db.select({ quantity: orderExchanges.newQty }).from(orderExchanges).where(eq(orderExchanges.orderId, orderId)),
+    ])
+    const quantity = [...items, ...exchangeItems].reduce((sum, item) => sum + item.quantity, 0)
+    if (quantity <= 0) throw new Error('Order has no shippable items')
 
     const codAmount = Math.max(Number(order.total) - Number(order.amountPaid || 0), 0)
     const form = new FormData()

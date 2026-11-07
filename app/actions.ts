@@ -543,7 +543,18 @@ export async function updateOrderStatus(orderId: number, status: string) {
       if (!current) throw new UserError('الطلب غير موجود')
       const wasInactive = INACTIVE_STATUSES.includes(current.status as StatusKey)
       const isInactive = INACTIVE_STATUSES.includes(status)
-      if (wasInactive && !isInactive) throw new UserError('لا يمكن إعادة تفعيل طلب ملغي أو مرتجع من شاشة الحالات. أنشئي طلباً جديداً بعد مراجعة المخزون.')
+      if (wasInactive && status !== current.status) {
+        throw new UserError('لا يمكن تغيير حالة طلب ملغي أو مرتجع. أنشئي طلباً جديداً بعد مراجعة المخزون.')
+      }
+      if (current.status === 'shipped' && !['shipped', 'delivered', 'returned'].includes(status)) {
+        throw new UserError('الطلب خرج للتوصيل؛ لا يمكن إعادته إلى التجهيز أو إلغاؤه. إذا عاد الطرد فعلياً، اختاري حالة "راجع".')
+      }
+      if (current.status === 'delivered' && !['delivered', 'returned'].includes(status)) {
+        throw new UserError('الطلب تم تسليمه؛ لا يمكن إلغاءه أو إعادته إلى التجهيز. عند استلام المرتجع اختاري حالة "راجع".')
+      }
+      if (current.status === 'preparing' && status === 'returned') {
+        throw new UserError('الطلب لم يغادر المستودع بعد؛ اختاري حالة "ملغي" إذا لم يعد مطلوباً.')
+      }
       if (!wasInactive && isInactive) await adjustOrderStock(tx, oid, 1)
 
       const now = new Date()
@@ -632,7 +643,10 @@ export async function deleteOrder(orderId: number) {
     await db.transaction(async (tx) => {
       const [current] = await tx.select().from(orders).where(eq(orders.id, oid)).for('update')
       if (!current) return
-      if (!INACTIVE_STATUSES.includes(current.status as StatusKey)) await adjustOrderStock(tx, oid, 1)
+      if (current.status !== 'preparing' && !INACTIVE_STATUSES.includes(current.status as StatusKey)) {
+        throw new UserError('لا يمكن حذف طلب خرج للتوصيل أو تم تسليمه. إذا عاد الطرد فعلياً، غيّري حالته إلى "راجع" للحفاظ على سجل الطلب والمخزون.')
+      }
+      if (current.status === 'preparing') await adjustOrderStock(tx, oid, 1)
       await tx.delete(orderItems).where(eq(orderItems.orderId, oid))
       await tx.delete(orderExchanges).where(eq(orderExchanges.orderId, oid))
       await tx.delete(orders).where(eq(orders.id, oid))
