@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     { header: 'المدينة', key: 'city', width: 14 },
     { header: 'المنطقة', key: 'region', width: 12 },
     { header: 'العنوان', key: 'address', width: 28 },
-    { header: 'المنتجات', key: 'items', width: 40 },
+    { header: 'وصف الطرد', key: 'items', width: 20 },
     { header: 'عدد القطع', key: 'pieces', width: 10 },
     { header: 'شركة التوصيل', key: 'courier', width: 16 },
     { header: 'رقم التتبع', key: 'tracking', width: 16 },
@@ -43,8 +43,6 @@ export async function GET(request: Request) {
   ]
 
   for (const o of rows) {
-    const items = o.items.map((i) => `${i.modelName} (${i.color}) × ${i.quantity}`)
-    const exchanges = o.exchanges.map((e) => `استبدال: ${e.returnedName} ← ${e.newName} (${e.newColor})`)
     sheet.addRow({
       id: o.id,
       name: o.customerName,
