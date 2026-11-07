@@ -543,8 +543,8 @@ export async function updateOrderStatus(orderId: number, status: string) {
       if (!current) throw new UserError('الطلب غير موجود')
       const wasInactive = INACTIVE_STATUSES.includes(current.status as StatusKey)
       const isInactive = INACTIVE_STATUSES.includes(status)
+      if (wasInactive && !isInactive) throw new UserError('لا يمكن إعادة تفعيل طلب ملغي أو مرتجع من شاشة الحالات. أنشئي طلباً جديداً بعد مراجعة المخزون.')
       if (!wasInactive && isInactive) await adjustOrderStock(tx, oid, 1)
-      if (wasInactive && !isInactive) await adjustOrderStock(tx, oid, -1)
 
       const now = new Date()
       const leftWarehouse = status === 'shipped' || status === 'delivered' || status === 'returned'
