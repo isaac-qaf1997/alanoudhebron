@@ -48,6 +48,7 @@ export const couriers = pgTable('couriers', {
   phone: text('phone'),
   feeWestBank: money('fee_west_bank').notNull().default(15),
   feeJerusalem: money('fee_jerusalem').notNull().default(25),
+  feeArea67: money('fee_area_67').notNull().default(0),
   feeInside: money('fee_inside').notNull().default(60),
   active: boolean('active').notNull().default(true),
   integrationKey: text('integration_key'),
@@ -72,6 +73,7 @@ export const orders = pgTable('orders', {
   status: text('status').notNull().default('preparing'),
   itemsTotal: money('items_total').notNull().default(0),
   shippingFee: money('shipping_fee').notNull().default(0),
+  discount: money('discount').notNull().default(0),
   exchangeDiff: money('exchange_diff').notNull().default(0),
   total: money('total').notNull().default(0),
   costTotal: money('cost_total').notNull().default(0),
@@ -147,6 +149,7 @@ export type CourierPublic = Pick<
   | 'phone'
   | 'feeWestBank'
   | 'feeJerusalem'
+  | 'feeArea67'
   | 'feeInside'
   | 'active'
   | 'integrationKey'
