@@ -233,7 +233,7 @@ export async function deleteCourier(courierId: number) {
   return run(async () => {
     const cid = id(courierId)
     await db.transaction(async (tx) => {
-      await tx.update(orders).set({ courierId: null, courierFee: 0 }).where(eq(orders.courierId, cid))
+      await tx.update(orders).set({ courierId: null }).where(eq(orders.courierId, cid))
       await tx.delete(couriers).where(eq(couriers.id, cid))
     })
   })
