@@ -17,3 +17,9 @@ CREATE TABLE IF NOT EXISTS public.coupons (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS coupons_code_upper_uq ON public.coupons (upper(code));
+
+ALTER TABLE public.couriers
+  ALTER COLUMN fee_west_bank SET DEFAULT 18,
+  ALTER COLUMN fee_jerusalem SET DEFAULT 28,
+  ALTER COLUMN fee_area_67 SET DEFAULT 50,
+  ALTER COLUMN fee_inside SET DEFAULT 68;
