@@ -3,7 +3,7 @@ import type { OrderFull } from '@/lib/queries'
 export type OrderDisplay = Pick<
   OrderFull,
   | 'id' | 'customerName' | 'phone' | 'region' | 'city' | 'address'
-  | 'trackingNumber' | 'status' | 'shippingFee' | 'discount' | 'notes'
+  | 'trackingNumber' | 'status' | 'shippingFee' | 'discount' | 'couponCode' | 'notes'
   | 'shippedAt' | 'deliveredAt' | 'createdAt' | 'total'
   | 'syncError' | 'courierName'
 > & {
@@ -16,7 +16,7 @@ export function toOrderDisplay(order: OrderFull): OrderDisplay {
     id: order.id, customerName: order.customerName, phone: order.phone,
     region: order.region, city: order.city, address: order.address,
     trackingNumber: order.trackingNumber, status: order.status,
-    shippingFee: order.shippingFee, discount: order.discount, notes: order.notes,
+    shippingFee: order.shippingFee, discount: order.discount, couponCode: order.couponCode, notes: order.notes,
     shippedAt: order.shippedAt, deliveredAt: order.deliveredAt,
     createdAt: order.createdAt, total: order.total,
     syncError: order.syncError, courierName: order.courierName,
