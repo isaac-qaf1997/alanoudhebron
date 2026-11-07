@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { checkStoreCoupon, submitStoreOrder } from '@/app/store-actions'
-import { REGIONS } from '@/lib/constants'
+import { CITY_REGIONS, REGIONS } from '@/lib/constants'
 
 type Product = { id: number; name: string; price: number; colors: { color: string; stock: number }[] }
 type CartLine = { modelId: number; color: string; quantity: number }
@@ -43,7 +43,13 @@ export default function CheckoutForm({ products }: { products: Product[] }) {
       setAppliedCoupon(null); setCouponMessage('تعذر التحقق من الكود حالياً.')
     } finally { setCouponBusy(false) }
   }
-  function update(field: string, value: string) { setForm(current => ({ ...current, [field]: value })) }
+  function update(field: string, value: string) {
+    setForm(current => ({
+      ...current,
+      [field]: value,
+      ...(field === 'city' && CITY_REGIONS[value.trim()] ? { region: CITY_REGIONS[value.trim()] } : {}),
+    }))
+  }
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (submitting.current || busy) return
