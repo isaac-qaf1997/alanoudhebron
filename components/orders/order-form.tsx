@@ -38,6 +38,7 @@ const emptyCustomer = {
   phone: '',
   city: '',
   region: '' as RegionKey | '',
+  area: '',
   address: '',
   courierId: '',
   trackingNumber: '',
@@ -62,9 +63,10 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
     0,
   )
   const shipping = customer.region ? REGIONS[customer.region].fee : 0
+  const discountableSubtotal = itemsTotal + exchanges.reduce((sum, e) => sum + priceOf(e.newModelId) * e.newQty, 0)
   const subtotal = Math.max(itemsTotal + shipping + exchangeDiff, 0)
-  const appliedDiscount = Math.min(discount, subtotal)
-  const total = subtotal - appliedDiscount
+  const appliedDiscount = Math.min(discount, discountableSubtotal)
+  const total = Math.max(subtotal - appliedDiscount, 0)
 
   const set = <K extends keyof typeof customer>(key: K, value: (typeof customer)[K]) =>
     setCustomer((c) => ({ ...c, [key]: value }))
@@ -86,7 +88,7 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
     setMessage(null)
     const filledItems = items.filter((i) => i.modelId)
     const filledExchanges = exchanges.filter((x) => x.returnedModelId && x.newModelId)
-    if (filledItems.some((i) => !i.color) || filledExchanges.some((x) => !x.newColor)) {
+    if (filledItems.some((i) => !i.color) || filledExchanges.some((x) => !x.returnedColor || !x.newColor)) {
       setMessage({ type: 'error', text: 'اختاري اللون لكل موديل' })
       return
     }
@@ -373,6 +375,9 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
               </Select>
             </Field>
           </div>
+          <Field label="المنطقة / الحي" htmlFor={`${uid}-area`}>
+            <Input id={`${uid}-area`} value={customer.area} onChange={(e) => set('area', e.target.value)} required />
+          </Field>
           <Field label="العنوان التفصيلي" htmlFor={`${uid}-address`}>
             <Input id={`${uid}-address`} value={customer.address} onChange={(e) => set('address', e.target.value)} />
           </Field>
@@ -411,12 +416,12 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
             id={`${uid}-discount`}
             type="number"
             min={0}
-            max={subtotal}
+            max={discountableSubtotal}
             step="0.5"
             value={appliedDiscount}
-            onChange={(e) => setDiscount(Math.min(subtotal, Math.max(0, Number(e.target.value) || 0)))}
+            onChange={(e) => setDiscount(Math.min(discountableSubtotal, Math.max(0, Number(e.target.value) || 0)))}
           />
-          <p className="text-xs text-muted-foreground">الخصم يُطرح من المبلغ النهائي، ويظهر في تفاصيل الطلب. شركة التوصيل تستلم مبلغ التحصيل النهائي فقط.</p>
+          <p className="text-xs text-muted-foreground">يُحسب الخصم على قيمة المنتجات فقط، ولا يشمل رسوم التوصيل. شركة التوصيل تستلم مبلغ التحصيل النهائي فقط.</p>
         </Field>
 
         <dl className="flex flex-col gap-2 rounded-xl border border-border bg-background/40 p-4 text-sm">
