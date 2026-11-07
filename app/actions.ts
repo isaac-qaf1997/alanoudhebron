@@ -317,11 +317,15 @@ async function adjustOrderStock(tx: Tx, orderId: number, direction: 1 | -1) {
     ]),
   ]
   for (const change of changes) {
-    if (!change.modelId || !change.color) continue
-    await tx
+    if (!change.modelId || !change.color || change.delta === 0) continue
+    const updated = await tx
       .update(modelColors)
-      .set({ stock: sql`greatest(${modelColors.stock} + ${change.delta}, 0)` })
-      .where(sql`${modelColors.modelId} = ${change.modelId} and ${modelColors.color} = ${change.color}`)
+      .set({ stock: sql`${modelColors.stock} + ${change.delta}` })
+      .where(sql`${modelColors.modelId} = ${change.modelId} and ${modelColors.color} = ${change.color} and ${modelColors.stock} >= ${Math.max(0, -change.delta)}`)
+      .returning({ id: modelColors.id })
+    if (!updated.length) {
+      throw new UserError(change.delta < 0 ? 'المخزون غير كافٍ لإعادة تفعيل الطلب. راجعي الكميات المتوفرة أولاً.' : 'تعذر العثور على لون مرتبط بالطلب لإرجاعه إلى المخزون.')
+    }
   }
 }
 
@@ -498,7 +502,7 @@ export async function updateOrderStatus(orderId: number, status: string) {
     if (!isStatus(status)) throw new UserError('حالة غير صالحة')
     const oid = id(orderId)
     await db.transaction(async (tx) => {
-      const [current] = await tx.select().from(orders).where(eq(orders.id, oid))
+      const [current] = await tx.select().from(orders).where(eq(orders.id, oid)).for('update')
       if (!current) throw new UserError('الطلب غير موجود')
       const wasInactive = INACTIVE_STATUSES.includes(current.status as StatusKey)
       const isInactive = INACTIVE_STATUSES.includes(status)
