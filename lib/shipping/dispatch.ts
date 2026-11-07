@@ -1,5 +1,6 @@
 import { and, eq, inArray, isNull, lt, or } from 'drizzle-orm'
 import { db } from '@/lib/db'
+import { INACTIVE_STATUSES } from '@/lib/constants'
 import { couriers, orders } from '@/lib/db/schema'
 
 type CarrierConfig = { apiUrl: string; token: string; createPath: string }
@@ -28,6 +29,7 @@ function getCarrierConfig(key: string): CarrierConfig | null {
 export async function dispatchShipment(orderId: number) {
   const [order] = await db.select().from(orders).where(eq(orders.id, orderId))
   if (!order?.courierId) return
+  if (INACTIVE_STATUSES.includes(order.status as (typeof INACTIVE_STATUSES)[number])) return
   if (order.syncStatus === 'sent' || order.syncStatus === 'synced') return
 
   const [courier] = await db.select().from(couriers).where(eq(couriers.id, order.courierId))
@@ -81,7 +83,7 @@ export async function dispatchShipment(orderId: number) {
       signal: AbortSignal.timeout(15000),
       body: JSON.stringify({
         reference: `ORDER-${order.id}`,
-        recipient: { name: order.customerName, phone: order.phone, city: order.city, region: order.region, address: order.address },
+        recipient: { name: order.customerName, phone: order.phone, city: order.city, area: order.area, region: order.region, address: order.address },
         codAmount: order.total,
       }),
     })
