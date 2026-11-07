@@ -40,7 +40,9 @@ export const modelColors = pgTable('model_colors', {
   color: text('color').notNull(),
   stock: integer('stock').notNull().default(0),
   imageUrl: text('image_url'),
-})
+}, (table) => ({
+  modelColorUnique: uniqueIndex('model_colors_model_color_normalized_uq').on(table.modelId, sql`lower(btrim(${table.color}))`),
+}))
 
 export const couriers = pgTable('couriers', {
   id: serial('id').primaryKey(),
@@ -58,7 +60,9 @@ export const couriers = pgTable('couriers', {
   apiEnabled: boolean('api_enabled').notNull().default(false),
   sendOnOrderCreate: boolean('send_on_order_create').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-})
+}, (table) => ({
+  integrationKeyUnique: uniqueIndex('couriers_integration_key_uq').on(table.integrationKey).where(sql`${table.integrationKey} IS NOT NULL AND btrim(${table.integrationKey}) <> ''`),
+}))
 
 export const orders = pgTable('orders', {
   id: serial('id').primaryKey(),
@@ -105,7 +109,9 @@ export const coupons = pgTable('coupons', {
   usageLimit: integer('usage_limit'),
   usedCount: integer('used_count').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-})
+}, (table) => ({
+  codeUpperUnique: uniqueIndex('coupons_code_upper_uq').on(sql`upper(${table.code})`),
+}))
 
 export type Coupon = typeof coupons.$inferSelect
 
