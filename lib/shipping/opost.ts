@@ -72,7 +72,7 @@ export async function dispatchOpostShipment(orderId: number) {
     const location = await resolveLocation(order.city, order.area, token)
     const items = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId))
     const quantity = items.reduce((sum, item) => sum + item.quantity, 0)
-    const description = items.map(item => `${item.modelName} - ${item.color || ''} × ${item.quantity}`).join('، ').slice(0, 500)
+
     const codAmount = Math.max(Number(order.total) - Number(order.amountPaid || 0), 0)
     const form = new FormData()
     form.set('business', BUSINESS_ID)
@@ -84,7 +84,7 @@ export async function dispatchOpostShipment(orderId: number) {
     form.set('consignee[address]', order.address || order.area)
     form.set('shipment_types[0][id]', SHIPMENT_TYPE_ID)
     form.set('quantity', String(quantity))
-    form.set('items_description', description || 'ملابس')
+    form.set('items_description', 'ملابس')
     form.set('is_cod', codAmount > 0 ? '1' : '0')
     form.set('width', process.env.OPOST_DEFAULT_WIDTH || '10')
     form.set('height', process.env.OPOST_DEFAULT_HEIGHT || '10')
