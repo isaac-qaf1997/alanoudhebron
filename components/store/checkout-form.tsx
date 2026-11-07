@@ -47,6 +47,7 @@ export default function CheckoutForm({ products }: { products: Product[] }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (submitting.current || busy) return
+    if (couponCode.trim() && !appliedCoupon) { setError('اضغطي على تطبيق للتحقق من كود الخصم قبل تأكيد الطلب، أو امسحي الكود للمتابعة بدونه.'); return }
     submitting.current = true
     setBusy(true); setError('')
     try {
