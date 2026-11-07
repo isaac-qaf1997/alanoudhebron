@@ -118,7 +118,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pr
     }
 
     const wasInactive = order.status === 'cancelled' || order.status === 'returned'
-    const isInactive = status === 'returned'
+    const isInactive = status === 'cancelled' || status === 'returned'
     if (!wasInactive && isInactive) await restoreOrDeductStock(tx, order.id, 1)
     if (wasInactive && !isInactive) await restoreOrDeductStock(tx, order.id, -1)
 
