@@ -1,5 +1,6 @@
 import { and, eq, inArray, isNull, lt, or } from 'drizzle-orm'
 import { db } from '@/lib/db'
+import { INACTIVE_STATUSES } from '@/lib/constants'
 import { couriers, orderItems, orders } from '@/lib/db/schema'
 
 const BASE = 'https://o.opost.ps'
@@ -52,6 +53,7 @@ async function resolveLocation(cityName: string, areaName: string, token: string
 export async function dispatchOpostShipment(orderId: number) {
   const [order] = await db.select().from(orders).where(eq(orders.id, orderId))
   if (!order?.courierId) return
+  if (INACTIVE_STATUSES.includes(order.status as (typeof INACTIVE_STATUSES)[number])) return
   if (order.syncStatus === 'sent' || order.syncStatus === 'synced') return
   const [courier] = await db.select().from(couriers).where(eq(couriers.id, order.courierId))
   if (!courier?.active || !courier.apiEnabled || courier.integrationKey !== 'opost') return
