@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull, lt, or } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { couriers, orderItems, orders } from '@/lib/db/schema'
+import { couriers, orders } from '@/lib/db/schema'
 
 type CarrierConfig = { apiUrl: string; token: string; createPath: string }
 
@@ -70,7 +70,6 @@ export async function dispatchShipment(orderId: number) {
   if (!claim) return
 
   try {
-    const items = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId))
     const response = await fetch(new URL(config.createPath, config.apiUrl), {
       method: 'POST',
       headers: {
@@ -84,8 +83,6 @@ export async function dispatchShipment(orderId: number) {
         reference: `ORDER-${order.id}`,
         recipient: { name: order.customerName, phone: order.phone, city: order.city, region: order.region, address: order.address },
         codAmount: order.total,
-        notes: order.notes,
-        items: items.map((item) => ({ name: item.modelName, color: item.color, quantity: item.quantity })),
       }),
     })
     const result = await response.json().catch(() => ({})) as { id?: string | number; shipmentId?: string | number; trackingNumber?: string }
