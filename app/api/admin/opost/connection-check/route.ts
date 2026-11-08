@@ -34,7 +34,11 @@ function nextPageUrl(payload: unknown): string | null {
 }
 
 function label(row: ApiRecord): string {
-  return String(row.name ?? row.title ?? row.label ?? row.ar_name ?? row.name_ar ?? '').trim()
+  return String(
+    row.name ?? row.title ?? row.label ?? row.ar_name ?? row.name_ar ??
+    row.area_name ?? row.areaName ?? row.name_arabic ?? row.arabic_name ??
+    row.name_en ?? row.english_name ?? row.area ?? ''
+  ).trim()
 }
 
 function idOf(row: ApiRecord): string {
@@ -116,6 +120,15 @@ export async function GET() {
       citiesCount: cities.length,
       hebronAreasCount: areas.length,
       hebronFound: true,
+      hebronCityAreaAlias: areas.find((area) =>
+        ['مدينة الخليل', 'hebron city'].includes(normalize(label(area)))
+      ) ? label(areas.find((area) =>
+        ['مدينة الخليل', 'hebron city'].includes(normalize(label(area)))
+      )!) : null,
+      hebronAreaSuggestions: areas
+        .map((area) => label(area))
+        .filter((name) => name && (normalize(name).includes(normalize('خليل')) || normalize(name).includes('hebron')))
+        .slice(0, 8),
     }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'تعذر الاتصال بخدمة Opost.'
