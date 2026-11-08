@@ -29,7 +29,9 @@ function Logo() {
 }
 
 export default async function ShopPage() {
-  const [currentUser, products] = await Promise.all([getCurrentUser(), getStoreProducts()])
+  const [userResult, productsResult] = await Promise.allSettled([getCurrentUser(), getStoreProducts()])
+  const currentUser = userResult.status === 'fulfilled' ? userResult.value : null
+  const products = productsResult.status === 'fulfilled' ? productsResult.value : []
   const available = products.map((product) => {
     const variants = product.colors.filter((color) => color.sizes.length
       ? color.sizes.some((size) => size.stock === null || size.stock > 0)
