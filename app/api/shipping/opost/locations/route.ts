@@ -59,6 +59,13 @@ async function getAll(path: string, token: string) {
     if (!next) return output
     const nextUrl = new URL(next, BASE)
     if (nextUrl.origin !== BASE || !nextUrl.pathname.startsWith('/api/resources/')) throw new Error('Invalid Opost next page')
+    // Opost's pagination links may omit the original filters (e.g. `city=3`).
+    // Carry forward every original query parameter except `page` so later pages
+    // remain scoped to the selected city instead of silently loading all areas.
+    const originalUrl = new URL(path, BASE)
+    for (const [key, value] of originalUrl.searchParams) {
+      if (key !== 'page' && !nextUrl.searchParams.has(key)) nextUrl.searchParams.set(key, value)
+    }
     url = nextUrl.toString()
   }
   if (url) throw new Error('Opost location list exceeds the safe page limit')
