@@ -1,6 +1,6 @@
 'use server'
 
-import { and, eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray, or, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { authorizeRole, type CurrentUser } from '@/lib/auth/session'
 import { db } from '@/lib/db'
@@ -184,29 +184,43 @@ export async function saveColorSizes(colorId: number, sizes: { size: string; sto
       const keyOf = (value: string) => value.normalize('NFKC').trim().toLowerCase()
       const nextByKey = new Map(normalized.map((size) => [keyOf(size.size), size]))
       const existingByKey = new Map(existingSizes.map((size) => [keyOf(size.size), size]))
+      const oldNames = existingSizes.map((size) => size.size)
+      const [usedItems, usedExchanges] = oldNames.length ? await Promise.all([
+        tx.select({ size: orderItems.size }).from(orderItems).where(and(
+          eq(orderItems.modelId, color.modelId),
+          eq(orderItems.color, color.color),
+          inArray(orderItems.size, oldNames),
+        )),
+        tx.select({ returnedSize: orderExchanges.returnedSize, newSize: orderExchanges.newSize }).from(orderExchanges).where(or(
+          and(
+            eq(orderExchanges.returnedModelId, color.modelId),
+            eq(orderExchanges.returnedColor, color.color),
+            inArray(orderExchanges.returnedSize, oldNames),
+          ),
+          and(
+            eq(orderExchanges.newModelId, color.modelId),
+            eq(orderExchanges.newColor, color.color),
+            inArray(orderExchanges.newSize, oldNames),
+          ),
+        )),
+      ]) : [[], []]
+      const historicallyUsed = new Set<string>([
+        ...usedItems.flatMap((item) => item.size ? [item.size] : []),
+        ...usedExchanges.flatMap((exchange) => [exchange.returnedSize, exchange.newSize].filter((size): size is string => Boolean(size))),
+      ])
 
       for (const oldSize of existingSizes) {
         const next = nextByKey.get(keyOf(oldSize.size))
         if (next) {
-          if (next.size !== oldSize.size) {
-            const [usedItem] = await tx.select({ id: orderItems.id }).from(orderItems)
-              .where(sql`${orderItems.modelId} = ${color.modelId} AND ${orderItems.color} = ${color.color} AND ${orderItems.size} = ${oldSize.size}`).limit(1)
-            const [usedExchange] = await tx.select({ id: orderExchanges.id }).from(orderExchanges)
-              .where(sql`(${orderExchanges.returnedModelId} = ${color.modelId} AND ${orderExchanges.returnedColor} = ${color.color} AND ${orderExchanges.returnedSize} = ${oldSize.size}) OR (${orderExchanges.newModelId} = ${color.modelId} AND ${orderExchanges.newColor} = ${color.color} AND ${orderExchanges.newSize} = ${oldSize.size})`).limit(1)
-            if (usedItem || usedExchange) {
-              throw new UserError(`لا يمكن تغيير كتابة المقاس ${oldSize.size} لأنه محفوظ في طلب سابق. اتركي الاسم كما هو للحفاظ على سجل الطلب.`)
-            }
+          if (next.size !== oldSize.size && historicallyUsed.has(oldSize.size)) {
+            throw new UserError(`لا يمكن تغيير كتابة المقاس ${oldSize.size} لأنه محفوظ في طلب سابق. اتركي الاسم كما هو للحفاظ على سجل الطلب.`)
           }
           await tx.update(modelSizes).set({ size: next.size, stock: next.stock }).where(eq(modelSizes.id, oldSize.id))
           continue
         }
 
         if ((oldSize.stock ?? 0) > 0) throw new UserError(`صفّري مخزون المقاس ${oldSize.size} قبل حذفه حتى لا تضيع الكمية.`)
-        const [usedItem] = await tx.select({ id: orderItems.id }).from(orderItems)
-          .where(sql`${orderItems.modelId} = ${color.modelId} AND ${orderItems.color} = ${color.color} AND ${orderItems.size} = ${oldSize.size}`).limit(1)
-        const [usedExchange] = await tx.select({ id: orderExchanges.id }).from(orderExchanges)
-          .where(sql`(${orderExchanges.returnedModelId} = ${color.modelId} AND ${orderExchanges.returnedColor} = ${color.color} AND ${orderExchanges.returnedSize} = ${oldSize.size}) OR (${orderExchanges.newModelId} = ${color.modelId} AND ${orderExchanges.newColor} = ${color.color} AND ${orderExchanges.newSize} = ${oldSize.size})`).limit(1)
-        if (usedItem || usedExchange) throw new UserError(`لا يمكن حذف مقاس ${oldSize.size} لأنه مرتبط بطلب سابق. اتركيه واجعلي مخزونه صفراً.`)
+        if (historicallyUsed.has(oldSize.size)) throw new UserError(`لا يمكن حذف مقاس ${oldSize.size} لأنه مرتبط بطلب سابق. اتركيه واجعلي مخزونه صفراً.`)
         await tx.delete(modelSizes).where(eq(modelSizes.id, oldSize.id))
       }
 
