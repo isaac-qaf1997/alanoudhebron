@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { asc, desc } from 'drizzle-orm'
+import { asc, desc, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { models, modelColors } from '@/lib/db/schema'
 import { getCurrentUser } from '@/lib/auth/session'
@@ -30,7 +30,7 @@ function BrandMark() {
 export default async function ShopPage() {
   const currentUser = await getCurrentUser()
   const [products, colors] = await Promise.all([
-    db.select({ id: models.id, name: models.name, price: models.price, imageUrl: models.imageUrl }).from(models).orderBy(desc(models.createdAt)),
+    db.select({ id: models.id, name: models.name, price: models.price, imageUrl: models.imageUrl }).from(models).where(eq(models.isPublished, true)).orderBy(desc(models.createdAt)),
     db.select({ modelId: modelColors.modelId, color: modelColors.color, stock: modelColors.stock, imageUrl: modelColors.imageUrl }).from(modelColors).orderBy(asc(modelColors.id)),
   ])
   const available = products.map((product) => {
