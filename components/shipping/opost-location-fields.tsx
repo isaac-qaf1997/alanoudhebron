@@ -3,6 +3,45 @@
 import { useEffect, useState } from 'react'
 
 type LocationOption = { id: string; name: string }
+// Reuse carrier locations while the shopper navigates between checkout/admin forms.
+let citiesCache: LocationOption[] | null = null
+let citiesRequest: Promise<LocationOption[]> | null = null
+const areasCache = new Map<string, LocationOption[]>()
+const areasRequests = new Map<string, Promise<LocationOption[]>>()
+
+async function loadCities() {
+  if (citiesCache) return citiesCache
+  if (!citiesRequest) {
+    citiesRequest = fetch('/api/shipping/opost/locations')
+      .then(async response => {
+        const data = await response.json()
+        if (!response.ok || !data.ok || !Array.isArray(data.cities) || !data.cities.length) throw new Error('no city list')
+        citiesCache = data.cities
+        return citiesCache
+      })
+      .catch(error => { citiesRequest = null; throw error })
+  }
+  return citiesRequest
+}
+
+async function loadAreas(cityId: string) {
+  const cached = areasCache.get(cityId)
+  if (cached) return cached
+  let request = areasRequests.get(cityId)
+  if (!request) {
+    request = fetch(`/api/shipping/opost/locations?cityId=${encodeURIComponent(cityId)}`)
+      .then(async response => {
+        const data = await response.json()
+        if (!response.ok || !data.ok || !Array.isArray(data.areas)) throw new Error('no area list')
+        areasCache.set(cityId, data.areas)
+        return data.areas
+      })
+      .catch(error => { areasRequests.delete(cityId); throw error })
+    areasRequests.set(cityId, request)
+  }
+  return request
+}
+
 type Props = {
   city: string
   area: string
@@ -24,13 +63,11 @@ export function OpostLocationFields({ city, area, onCityChange, onAreaChange, ci
 
   useEffect(() => {
     let active = true
-    fetch('/api/shipping/opost/locations', { cache: 'no-store' })
-      .then(r => r.json())
+    loadCities()
       .then(data => {
         if (!active) return
-        if (!data.ok || !Array.isArray(data.cities) || !data.cities.length) throw new Error('no city list')
-        setCities(data.cities)
-        const existing = data.cities.find((item: LocationOption) => item.name === city)
+        setCities(data)
+        const existing = data.find((item: LocationOption) => item.name === city)
         if (existing) {
           setSelectedCityId(existing.id)
           onCityIdChange?.(existing.id)
@@ -47,13 +84,11 @@ export function OpostLocationFields({ city, area, onCityChange, onAreaChange, ci
     if (!selectedCityId || manualCity) { setAreas([]); return }
     let active = true
     setLoadingAreas(true)
-    fetch(`/api/shipping/opost/locations?cityId=${encodeURIComponent(selectedCityId)}`, { cache: 'no-store' })
-      .then(r => r.json())
+    loadAreas(selectedCityId)
       .then(data => {
         if (!active) return
-        if (!data.ok || !Array.isArray(data.areas)) throw new Error('no area list')
-        setAreas(data.areas)
-        if (area && !data.areas.some((item: LocationOption) => item.name === area)) {
+        setAreas(data)
+        if (area && !data.some((item: LocationOption) => item.name === area)) {
           onAreaChange('')
         }
       })
