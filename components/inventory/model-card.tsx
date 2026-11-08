@@ -11,6 +11,8 @@ import {
   setModelPublished,
   updateModel,
   updateModelColorImage,
+  updateModelGallery,
+  updateModelColorGallery,
 } from '@/app/actions'
 import type { ActionResult } from '@/app/actions'
 import { ImagePicker } from '@/components/inventory/image-picker'
@@ -27,6 +29,7 @@ export function ModelCard({ model }: { model: ModelWithColors }) {
   const [editing, setEditing] = useState(false)
   const [info, setInfo] = useState({ name: model.name, sku: model.sku ?? '', price: model.price, cost: model.cost })
   const [modelImageFile, setModelImageFile] = useState<File | null>(null)
+  const [modelGalleryFiles, setModelGalleryFiles] = useState<File[]>([])
   const [newColor, setNewColor] = useState({ color: '', stock: null as number | null, file: null as File | null })
 
   const total = model.colors.reduce((s, color) => s + (color.sizes.length ? color.sizes.reduce((n, size) => n + (size.stock ?? 0), 0) : (color.stock ?? 0)), 0)
@@ -123,6 +126,15 @@ export function ModelCard({ model }: { model: ModelWithColors }) {
         </header>
       )}
 
+      <div className="flex flex-col gap-2 rounded-lg border border-border/70 p-3">
+        <div className="text-sm font-medium">معرض صور الموديل · {model.galleryUrls.length} صورة</div>
+        <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => setModelGalleryFiles(Array.from(e.target.files ?? []).slice(0, 20))} className="text-xs" />
+        {modelGalleryFiles.length ? <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => act(async () => {
+          const urls = await Promise.all(modelGalleryFiles.map(uploadInventoryImage))
+          return updateModelGallery(model.id, [...model.galleryUrls, ...urls])
+        }, () => setModelGalleryFiles([]))}>رفع {modelGalleryFiles.length} صورة إضافية</Button> : null}
+        {model.galleryUrls.length ? <div className="flex flex-wrap gap-2">{model.galleryUrls.map((url, index) => <img key={url + index} src={url} alt={`صورة إضافية ${index + 1}`} className="size-14 rounded-md object-cover" />)}</div> : <p className="text-xs text-muted-foreground">لا توجد صور إضافية بعد.</p>}
+      </div>
       <ul className="flex flex-col gap-3">
         {model.colors.map((c) => (
           <ColorRow
@@ -131,9 +143,15 @@ export function ModelCard({ model }: { model: ModelWithColors }) {
             stock={c.stock}
             sizes={c.sizes}
             imageUrl={c.imageUrl}
+            galleryUrls={c.galleryUrls}
             disabled={pending}
             onSave={(stock) => act(() => setColorStock(c.id, stock))}
             onSaveSizes={(sizes) => act(() => saveColorSizes(c.id, sizes))}
+            onSaveGallery={async (files) => {
+              const urls = await Promise.all(files.map(uploadInventoryImage))
+              const result = await updateModelColorGallery(c.id, [...c.galleryUrls, ...urls])
+              if (!result.ok) throw new Error(result.error)
+            }}
             onSaveImage={async (file) => {
               const url = await uploadInventoryImage(file)
               const result = await updateModelColorImage(c.id, url)
@@ -202,6 +220,7 @@ function ColorRow({
   stock,
   sizes,
   imageUrl,
+  galleryUrls,
   disabled,
   onSave,
   onSaveSizes,
@@ -212,10 +231,12 @@ function ColorRow({
   stock: number | null
   sizes: { id: number; size: string; stock: number | null }[]
   imageUrl: string | null
+  galleryUrls: string[]
   disabled: boolean
   onSave: (stock: number | null) => void
   onSaveSizes: (sizes: { size: string; stock: number | null }[]) => void
   onSaveImage: (file: File) => Promise<void>
+  onSaveGallery: (files: File[]) => Promise<void>
   onDelete: () => void
 }) {
   const [value, setValue] = useState<number | null>(stock)
@@ -227,6 +248,9 @@ function ColorRow({
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePending, setImagePending] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([])
+  const [galleryPending, setGalleryPending] = useState(false)
+  const [galleryError, setGalleryError] = useState<string | null>(null)
   const low = stock !== null && stock <= 2
 
   useEffect(() => {
@@ -303,7 +327,17 @@ function ColorRow({
       </div>
 
       <div className="flex flex-col gap-1">
-        <ImagePicker compact title={`صورة ${color}`} imageUrl={imageUrl} file={imageFile} onFileChange={setImageFile} />
+        <div className="text-xs font-medium">صور إضافية للون {color} · {galleryUrls.length}</div>
+        <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => setGalleryFiles(Array.from(e.target.files ?? []).slice(0, 20))} className="text-xs" />
+        {galleryFiles.length ? <Button type="button" size="sm" variant="outline" disabled={galleryPending || disabled} onClick={async () => {
+          setGalleryPending(true); setGalleryError(null)
+          try { await onSaveGallery(galleryFiles); setGalleryFiles([]) }
+          catch (error) { setGalleryError(error instanceof Error ? error.message : 'تعذر حفظ الصور') }
+          finally { setGalleryPending(false) }
+        }}>{galleryPending ? 'جارٍ رفع الصور...' : `رفع ${galleryFiles.length} صور`}</Button> : null}
+        {galleryError ? <p role="alert" className="text-xs text-destructive">{galleryError}</p> : null}
+        {galleryUrls.length ? <div className="flex flex-wrap gap-2">{galleryUrls.map((url, index) => <img key={url + index} src={url} alt={`صورة ${color} ${index + 1}`} className="size-12 rounded-md object-cover" />)}</div> : null}
+        <ImagePicker compact title={`الصورة الرئيسية للون ${color}`} imageUrl={imageUrl} file={imageFile} onFileChange={setImageFile} />
         {imageFile ? (
           <Button type="button" size="sm" variant="outline" disabled={imagePending || disabled} onClick={saveImage}>
             <Check className="size-3.5" />
