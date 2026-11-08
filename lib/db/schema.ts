@@ -31,6 +31,7 @@ export const models = pgTable('models', {
   price: money('price').notNull().default(0),
   cost: money('cost').notNull().default(0),
   imageUrl: text('image_url'),
+  isPublished: boolean('is_published').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
