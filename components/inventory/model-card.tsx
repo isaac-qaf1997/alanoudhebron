@@ -225,6 +225,7 @@ function ColorRow({
   onSave,
   onSaveSizes,
   onSaveImage,
+  onSaveGallery,
   onDelete,
 }: {
   color: string
