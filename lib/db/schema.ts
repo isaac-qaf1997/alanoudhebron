@@ -92,6 +92,9 @@ export const orders = pgTable('orders', {
   shippedAt: timestamp('shipped_at', { withTimezone: true }),
   deliveredAt: timestamp('delivered_at', { withTimezone: true }),
   externalShipmentId: text('external_shipment_id'),
+  shippingProviderStatus: text('shipping_provider_status'),
+  shippingSyncedAt: timestamp('shipping_synced_at', { withTimezone: true }),
+  shippingError: text('shipping_error'),
   syncStatus: text('sync_status').notNull().default('not_configured'),
   syncError: text('sync_error'),
   lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
@@ -158,6 +161,30 @@ export const shippingWebhookEvents = pgTable(
   (table) => ({
     providerEventUnique: uniqueIndex('shipping_webhook_events_provider_event_unique').on(table.providerKey, table.eventId),
     orderIndex: index('shipping_webhook_events_order_idx').on(table.orderId),
+  }),
+)
+
+
+export const orderShippingStatusHistory = pgTable(
+  'order_shipping_status_history',
+  {
+    id: serial('id').primaryKey(),
+    orderId: integer('order_id').notNull(),
+    providerKey: text('provider_key').notNull(),
+    providerStatus: text('provider_status').notNull(),
+    providerLabel: text('provider_label'),
+    orderStatus: text('order_status'),
+    source: text('source').notNull().default('poll'),
+    externalEventId: text('external_event_id'),
+    occurredAt: timestamp('occurred_at', { withTimezone: true }),
+    recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    orderTimelineIndex: index('order_shipping_status_history_order_time_idx').on(table.orderId, table.recordedAt),
+    providerStatusIndex: index('order_shipping_status_history_provider_status_idx').on(table.providerKey, table.providerStatus),
+    externalEventUnique: uniqueIndex('order_shipping_status_history_external_event_uq')
+      .on(table.providerKey, table.externalEventId)
+      .where(sql`${table.externalEventId} IS NOT NULL`),
   }),
 )
 
