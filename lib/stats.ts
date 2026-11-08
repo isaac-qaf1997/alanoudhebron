@@ -23,7 +23,7 @@ export function computeStats(orders: OrderFull[], couriers: CourierPublic[]) {
     const status = order.status as StatusKey
     statusCounts[status] = (statusCounts[status] ?? 0) + 1
     if (order.shippedAt) parcelsOut += 1
-    if (status !== 'cancelled' && status !== 'returned') sales += order.total
+    if (status === 'delivered') sales += order.total
     if (status !== 'cancelled') cityCounts.set(order.city, (cityCounts.get(order.city) ?? 0) + 1)
 
     if (status === 'delivered') {
@@ -32,6 +32,7 @@ export function computeStats(orders: OrderFull[], couriers: CourierPublic[]) {
       collectedFees += order.courierFee
     } else if (status === 'returned') {
       netProfit -= order.courierFee
+      collectedFees += order.courierFee
     }
 
     const courier = order.courierId ? courierStats.get(order.courierId) : undefined
