@@ -121,7 +121,7 @@ export async function GET() {
       hebronAreasCount: areas.length,
       hebronFound: true,
       hebronCityAreaAlias: areas.find((area) =>
-        ['مدينة الخليل', 'hebron city'].includes(normalize(label(area)))
+        ['مدينة الخليل', 'الخليل المدينة', 'hebron city'].includes(normalize(label(area)))
       ) ? label(areas.find((area) =>
         ['مدينة الخليل', 'hebron city'].includes(normalize(label(area)))
       )!) : null,
