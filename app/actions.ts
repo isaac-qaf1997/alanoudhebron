@@ -245,11 +245,14 @@ type CourierInput = {
   active?: boolean
   integrationKey?: string
   apiEnabled?: boolean
+  sendOnOrderCreate?: boolean
 }
 
 function courierValues(input: CourierInput) {
   const name = text(input.name)
   if (!name) throw new UserError('اسم شركة التوصيل مطلوب')
+  const integrationKey = text(input.integrationKey, 50).toLowerCase().replace(/[^a-z0-9_-]/g, '') || null
+  const apiEnabled = input.apiEnabled ?? false
   return {
     name,
     phone: text(input.phone, 40) || null,
@@ -258,9 +261,9 @@ function courierValues(input: CourierInput) {
     feeArea67: amount(input.feeArea67),
     feeInside: amount(input.feeInside),
     active: input.active ?? true,
-    integrationKey: text(input.integrationKey, 50).toLowerCase().replace(/[^a-z0-9_-]/g, '') || null,
-    apiEnabled: input.apiEnabled ?? false,
-    sendOnOrderCreate: false,
+    integrationKey,
+    apiEnabled,
+    sendOnOrderCreate: Boolean(input.sendOnOrderCreate && apiEnabled && integrationKey === 'opost'),
   }
 }
 
