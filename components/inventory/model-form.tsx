@@ -123,7 +123,7 @@ export function ModelForm() {
           <Button type="button" variant="outline" size="sm" onClick={() => setColors((list) => [...list, newColor()])}><Plus className="size-4" /> إضافة لون</Button>
         </fieldset>
         {message ? <p role={message.type === 'error' ? 'alert' : 'status'} className={message.type === 'error' ? 'text-sm text-destructive' : 'text-sm text-success'}>{message.text}</p> : null}
-        <p className="text-xs text-muted-foreground">الصيغ المدعومة: JPG وPNG وWebP، بحد أقصى 4 ميغابايت للصورة الواحدة.</p>
+        <p className="text-xs text-muted-foreground">الصيغ المدعومة: JPG وPNG وWebP، حتى 25 ميغابايت قبل الضغط التلقائي.</p>
         <Button type="submit" size="lg" disabled={pending}>{pending ? 'جارٍ رفع الصور وحفظ الموديل...' : 'حفظ الموديل'}</Button>
       </form>
     </Panel>
