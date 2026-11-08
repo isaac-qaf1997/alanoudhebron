@@ -15,7 +15,6 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     : variant.stock === null || variant.stock > 0)
   const image = cloudinaryImageUrl(inStock.find((variant) => variant.imageUrl)?.imageUrl || product.imageUrl, 1200)
   if (!inStock.length) notFound()
-  const image = inStock.find((v) => v.imageUrl)?.imageUrl || product.imageUrl
   return <main dir="rtl" className="min-h-dvh bg-[#faf8f4] text-[#29251f]">
     <header className="border-b border-[#e9e2d7] bg-white px-5 py-5"><div className="mx-auto flex max-w-6xl justify-between"><Link href="/shop" className="text-xl font-bold text-[#7b5b36]">العنود</Link><Link href="/shop" className="text-sm">العودة للمتجر</Link></div></header>
     <section className="mx-auto grid max-w-6xl gap-10 px-5 py-10 md:grid-cols-2">
