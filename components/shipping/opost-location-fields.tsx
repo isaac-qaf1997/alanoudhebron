@@ -100,7 +100,15 @@ export function OpostLocationFields({ city, area, onCityChange, onAreaChange, ci
         {manualArea || manualCity || failed ? (
           <input required maxLength={100} value={area} onChange={e => onAreaChange(e.target.value)} className="mt-2 w-full rounded-xl border p-3" placeholder="اكتبي المنطقة أو الحي"/>
         ) : (
-          <select required value={area} onChange={e => onAreaChange(e.target.value)} className="mt-2 w-full rounded-xl border p-3" disabled={!selectedCityId || loadingAreas}>
+          <select required value={manualArea ? '__manual__' : area} onChange={e => {
+            if (e.target.value === '__manual__') {
+              setManualArea(true)
+              onAreaChange('')
+            } else {
+              setManualArea(false)
+              onAreaChange(e.target.value)
+            }
+          }} className="mt-2 w-full rounded-xl border p-3" disabled={!selectedCityId || loadingAreas}>
             <option value="">{loadingAreas ? 'جارٍ تحميل الأحياء…' : selectedCityId ? 'اختاري المنطقة / الحي' : 'اختاري المدينة أولاً'}</option>
             {areas.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
             <option value="__manual__">المنطقة غير موجودة — إدخال يدوي</option>
