@@ -169,29 +169,52 @@ export async function saveColorSizes(colorId: number, sizes: { size: string; sto
     const cid = id(colorId)
     if (!Array.isArray(sizes) || sizes.length > 30) throw new UserError('قائمة المقاسات غير صالحة')
     const normalized = sizes.map((s) => ({ size: text(s.size, 40), stock: s.stock == null ? null : qty(s.stock, true) }))
-    const keys = normalized.map((s) => s.size.normalize('NFKC').toLowerCase())
+    const keys = normalized.map((s) => s.size.normalize('NFKC').trim().toLowerCase())
     if (normalized.some((s) => !s.size) || new Set(keys).size !== keys.length) throw new UserError('تأكدي من أسماء المقاسات وعدم تكرارها')
     await db.transaction(async (tx) => {
       const [color] = await tx.select().from(modelColors).where(eq(modelColors.id, cid)).for('update')
       if (!color) throw new UserError('اللون غير موجود')
-      const existingSizes = await tx.select().from(modelSizes).where(eq(modelSizes.modelColorId, cid))
-      for (const oldSize of existingSizes) {
-        if (normalized.some((s) => s.size.toLowerCase() === oldSize.size.toLowerCase())) continue
-        if ((oldSize.stock ?? 0) > 0) throw new UserError(`صفّري مخزون المقاس ${oldSize.size} قبل حذفه حتى لا تضيع الكمية.`)
-        const [usedItem] = await tx.select({ id: orderItems.id }).from(orderItems).where(sql`${orderItems.modelId} = ${color.modelId} AND ${orderItems.color} = ${color.color} AND ${orderItems.size} = ${oldSize.size}`).limit(1)
-        const [usedExchange] = await tx.select({ id: orderExchanges.id }).from(orderExchanges).where(sql`(${orderExchanges.returnedModelId} = ${color.modelId} AND ${orderExchanges.returnedColor} = ${color.color} AND ${orderExchanges.returnedSize} = ${oldSize.size}) OR (${orderExchanges.newModelId} = ${color.modelId} AND ${orderExchanges.newColor} = ${color.color} AND ${orderExchanges.newSize} = ${oldSize.size})`).limit(1)
-        if (usedItem || usedExchange) throw new UserError(`لا يمكن حذف مقاس ${oldSize.size} لأنه مرتبط بطلب سابق. اتركيه واجعلي مخزونه صفراً.`)
-      }
+      const existingSizes = await tx.select().from(modelSizes).where(eq(modelSizes.modelColorId, cid)).for('update')
       if (normalized.length && color.stock !== null && color.stock > 0) {
         if (normalized.some((s) => s.stock === null) || normalized.reduce((sum, s) => sum + (s.stock ?? 0), 0) !== color.stock) {
           throw new UserError(`مخزون اللون الحالي ${color.stock} قطعة. وزّعي نفس الكمية على المقاسات قبل التحويل، أو صفّري المخزون أولاً.`)
         }
       }
-      await tx.delete(modelSizes).where(eq(modelSizes.modelColorId, cid))
-      if (normalized.length) {
-        await tx.insert(modelSizes).values(normalized.map((s) => ({ modelColorId: cid, ...s })))
-        await tx.update(modelColors).set({ stock: null }).where(eq(modelColors.id, cid))
+
+      const keyOf = (value: string) => value.normalize('NFKC').trim().toLowerCase()
+      const nextByKey = new Map(normalized.map((size) => [keyOf(size.size), size]))
+      const existingByKey = new Map(existingSizes.map((size) => [keyOf(size.size), size]))
+
+      for (const oldSize of existingSizes) {
+        const next = nextByKey.get(keyOf(oldSize.size))
+        if (next) {
+          if (next.size !== oldSize.size) {
+            const [usedItem] = await tx.select({ id: orderItems.id }).from(orderItems)
+              .where(sql`${orderItems.modelId} = ${color.modelId} AND ${orderItems.color} = ${color.color} AND ${orderItems.size} = ${oldSize.size}`).limit(1)
+            const [usedExchange] = await tx.select({ id: orderExchanges.id }).from(orderExchanges)
+              .where(sql`(${orderExchanges.returnedModelId} = ${color.modelId} AND ${orderExchanges.returnedColor} = ${color.color} AND ${orderExchanges.returnedSize} = ${oldSize.size}) OR (${orderExchanges.newModelId} = ${color.modelId} AND ${orderExchanges.newColor} = ${color.color} AND ${orderExchanges.newSize} = ${oldSize.size})`).limit(1)
+            if (usedItem || usedExchange) {
+              throw new UserError(`لا يمكن تغيير كتابة المقاس ${oldSize.size} لأنه محفوظ في طلب سابق. اتركي الاسم كما هو للحفاظ على سجل الطلب.`)
+            }
+          }
+          await tx.update(modelSizes).set({ size: next.size, stock: next.stock }).where(eq(modelSizes.id, oldSize.id))
+          continue
+        }
+
+        if ((oldSize.stock ?? 0) > 0) throw new UserError(`صفّري مخزون المقاس ${oldSize.size} قبل حذفه حتى لا تضيع الكمية.`)
+        const [usedItem] = await tx.select({ id: orderItems.id }).from(orderItems)
+          .where(sql`${orderItems.modelId} = ${color.modelId} AND ${orderItems.color} = ${color.color} AND ${orderItems.size} = ${oldSize.size}`).limit(1)
+        const [usedExchange] = await tx.select({ id: orderExchanges.id }).from(orderExchanges)
+          .where(sql`(${orderExchanges.returnedModelId} = ${color.modelId} AND ${orderExchanges.returnedColor} = ${color.color} AND ${orderExchanges.returnedSize} = ${oldSize.size}) OR (${orderExchanges.newModelId} = ${color.modelId} AND ${orderExchanges.newColor} = ${color.color} AND ${orderExchanges.newSize} = ${oldSize.size})`).limit(1)
+        if (usedItem || usedExchange) throw new UserError(`لا يمكن حذف مقاس ${oldSize.size} لأنه مرتبط بطلب سابق. اتركيه واجعلي مخزونه صفراً.`)
+        await tx.delete(modelSizes).where(eq(modelSizes.id, oldSize.id))
       }
+
+      for (const size of normalized) {
+        if (existingByKey.has(keyOf(size.size))) continue
+        await tx.insert(modelSizes).values({ modelColorId: cid, ...size })
+      }
+      if (normalized.length) await tx.update(modelColors).set({ stock: null }).where(eq(modelColors.id, cid))
     })
   })
 }
