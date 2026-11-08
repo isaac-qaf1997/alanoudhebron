@@ -36,10 +36,14 @@ export default function AddToCart({ modelId, colors }: { modelId: number; colors
       ? Object.entries(selectedSizes).map(([size, amount]) => ({ modelId, color, size, quantity: amount }))
       : [{ modelId, color, quantity }]
 
+    if (additions.reduce((sum, line) => sum + line.quantity, 0) > 50) {
+      setMessage('الحد الأقصى للطلب 50 قطعة. قلّلي الكميات قبل الإضافة.')
+      return
+    }
     if (!additions.length || additions.some((line) => {
       const variant = sizeVariants.find((entry) => entry.size === line.size)
       const available = sizeVariants.length ? (variant?.stock ?? 500) : stock
-      return line.quantity < 1 || line.quantity > available
+      return line.quantity < 1 || line.quantity > Math.min(20, available)
     })) return
 
     let items: CartLine[] = []
@@ -56,8 +60,8 @@ export default function AddToCart({ modelId, colors }: { modelId: number; colors
       )
       const variant = sizeVariants.find((entry) => entry.size === line.size)
       const available = sizeVariants.length ? (variant?.stock ?? 500) : stock
-      if (found) found.quantity = Math.min(available, found.quantity + line.quantity)
-      else items.push(line)
+      if (found) found.quantity = Math.min(20, available, found.quantity + line.quantity)
+      else items.push({ ...line, quantity: Math.min(20, available, line.quantity) })
     }
 
     localStorage.setItem(KEY, JSON.stringify(items))
@@ -120,7 +124,7 @@ export default function AddToCart({ modelId, colors }: { modelId: number; colors
             <div className="space-y-2">
               {Object.entries(selectedSizes).map(([size, amount]) => {
                 const variant = sizeVariants.find((entry) => entry.size === size)
-                const max = variant?.stock ?? 500
+                const max = Math.min(20, variant?.stock ?? 500)
                 return (
                   <div key={size} className="flex items-center justify-between gap-3 rounded-xl border bg-white p-3">
                     <span className="text-sm font-semibold">مقاس {size}</span>
@@ -153,9 +157,9 @@ export default function AddToCart({ modelId, colors }: { modelId: number; colors
           <input
             type="number"
             min={1}
-            max={stock}
+            max={Math.min(20, stock)}
             value={quantity}
-            onChange={(event) => setQuantity(Math.max(1, Math.min(stock, Number(event.target.value) || 1)))}
+            onChange={(event) => setQuantity(Math.max(1, Math.min(20, stock, Number(event.target.value) || 1)))}
             className="mt-2 w-28 rounded-xl border bg-white p-3"
           />
         </label>
@@ -164,7 +168,7 @@ export default function AddToCart({ modelId, colors }: { modelId: number; colors
       <button
         type="button"
         onClick={add}
-        disabled={!selected || (sizeVariants.length > 0 ? chosenCount === 0 : quantity < 1 || quantity > stock)}
+        disabled={!selected || (sizeVariants.length > 0 ? chosenCount === 0 : quantity < 1 || quantity > Math.min(20, stock))}
         className="rounded-full bg-[#765637] px-7 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
       >
         أضيفي إلى السلة
