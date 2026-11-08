@@ -22,6 +22,19 @@ export async function getModels() {
     db.select().from(modelColors).orderBy(asc(modelColors.id)),
     db.select().from(modelSizes).orderBy(asc(modelSizes.id)),
   ])
+  const colorsByModel = new Map<number, typeof colorRows>()
+  const sizesByColor = new Map<number, typeof sizeRows>()
+  for (const color of colorRows) {
+    const list = colorsByModel.get(color.modelId) ?? []
+    list.push(color)
+    colorsByModel.set(color.modelId, list)
+  }
+  for (const size of sizeRows) {
+    const list = sizesByColor.get(size.modelColorId) ?? []
+    list.push(size)
+    sizesByColor.set(size.modelColorId, list)
+  }
+
   return modelRows.map((model) => ({
     id: model.id,
     name: model.name,
@@ -31,9 +44,9 @@ export async function getModels() {
     imageUrl: model.imageUrl,
     isPublished: model.isPublished,
     createdAt: model.createdAt,
-    colors: colorRows.filter((c) => c.modelId === model.id).map((color) => ({
+    colors: (colorsByModel.get(model.id) ?? []).map((color) => ({
       ...color,
-      sizes: sizeRows.filter((size) => size.modelColorId === color.id),
+      sizes: sizesByColor.get(color.id) ?? [],
     })),
   }))
 }
@@ -64,11 +77,24 @@ async function hydrateOrders(rows: Order[]) {
       .orderBy(asc(orderExchanges.id)),
     getCouriers(),
   ])
+  const itemsByOrder = new Map<number, typeof items>()
+  const exchangesByOrder = new Map<number, typeof exchanges>()
+  const courierNames = new Map(courierRows.map((courier) => [courier.id, courier.name]))
+  for (const item of items) {
+    const list = itemsByOrder.get(item.orderId) ?? []
+    list.push(item)
+    itemsByOrder.set(item.orderId, list)
+  }
+  for (const exchange of exchanges) {
+    const list = exchangesByOrder.get(exchange.orderId) ?? []
+    list.push(exchange)
+    exchangesByOrder.set(exchange.orderId, list)
+  }
   return rows.map((order) => ({
     ...order,
-    items: items.filter((i) => i.orderId === order.id),
-    exchanges: exchanges.filter((e) => e.orderId === order.id),
-    courierName: courierRows.find((c) => c.id === order.courierId)?.name ?? null,
+    items: itemsByOrder.get(order.id) ?? [],
+    exchanges: exchangesByOrder.get(order.id) ?? [],
+    courierName: courierNames.get(order.courierId ?? -1) ?? null,
   }))
 }
 
