@@ -53,7 +53,7 @@ async function getAll(path: string, token: string): Promise<ApiRecord[]> {
   const visited = new Set<string>()
   const collected: ApiRecord[] = []
 
-  for (let page = 0; page < 20 && nextUrl; page += 1) {
+  for (let page = 0; page < 100 && nextUrl; page += 1) {
     const parsed = new URL(nextUrl, BASE)
     if (parsed.origin !== BASE || !parsed.pathname.startsWith('/api/resources/')) {
       throw new Error('رابط صفحة بيانات Opost غير موثوق.')
@@ -80,7 +80,7 @@ async function getAll(path: string, token: string): Promise<ApiRecord[]> {
     nextUrl = next.toString()
   }
 
-  if (nextUrl) throw new Error('تجاوز جلب بيانات Opost الحد الآمن لعدد الصفحات.')
+  if (nextUrl) throw new Error('تجاوز جلب بيانات Opost الحد الآمن لعدد الصفحات (100 صفحة).')
   return collected
 }
 
