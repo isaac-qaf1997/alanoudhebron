@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getStoreProducts } from '@/lib/queries'
+import { cloudinaryImageUrl } from '@/lib/images'
 import AddToCart from '@/components/store/add-to-cart'
 
 export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
@@ -12,7 +13,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const inStock = product.colors.filter((variant) => variant.sizes.length
     ? variant.sizes.some((size) => size.stock === null || size.stock > 0)
     : variant.stock === null || variant.stock > 0)
-  const image = inStock.find((variant) => variant.imageUrl)?.imageUrl || product.imageUrl
+  const image = cloudinaryImageUrl(inStock.find((variant) => variant.imageUrl)?.imageUrl || product.imageUrl, 1200)
   if (!inStock.length) notFound()
   const image = inStock.find((v) => v.imageUrl)?.imageUrl || product.imageUrl
   return <main dir="rtl" className="min-h-dvh bg-[#faf8f4] text-[#29251f]">
