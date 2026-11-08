@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { asc, desc, eq } from 'drizzle-orm'
+import { asc, desc, eq, inArray } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { models, modelColors, modelSizes } from '@/lib/db/schema'
 import { getCurrentUser } from '@/lib/auth/session'
@@ -29,14 +29,45 @@ function BrandMark() {
 
 export default async function ShopPage() {
   const currentUser = await getCurrentUser()
-  const [products, colors, sizes] = await Promise.all([
-    db.select({ id: models.id, name: models.name, price: models.price, imageUrl: models.imageUrl }).from(models).where(eq(models.isPublished, true)).orderBy(desc(models.createdAt)),
-    db.select().from(modelColors).orderBy(asc(modelColors.id)),
-    db.select().from(modelSizes).orderBy(asc(modelSizes.id)),
-  ])
+  const products = await db.select({
+    id: models.id, name: models.name, price: models.price, imageUrl: models.imageUrl,
+  }).from(models).where(eq(models.isPublished, true)).orderBy(desc(models.createdAt))
+
+  const colors = products.length
+    ? await db.select().from(modelColors).where(inArray(modelColors.modelId, products.map((product) => product.id))).orderBy(asc(modelColors.id))
+    : []
+  const sizes = colors.length
+    ? await db.select().from(modelSizes).where(inArray(modelSizes.modelColorId, colors.map((color) => color.id))).orderBy(asc(modelSizes.id))
+    : []
+
+  const sizesByColor = new Map<number, typeof sizes>()
+  const colorsByModel = new Map<number, typeof colors>()
+  for (const size of sizes) {
+    const list = sizesByColor.get(size.modelColorId) ?? []
+    list.push(size)
+    sizesByColor.set(size.modelColorId, list)
+  }
+  for (const color of colors) {
+    const list = colorsByModel.get(color.modelId) ?? []
+    list.push(color)
+    colorsByModel.set(color.modelId, list)
+  }
+
   const available = products.map((product) => {
-    const variants = colors.filter((color) => color.modelId === product.id).map((color) => ({ ...color, sizes: sizes.filter((s) => s.modelColorId === color.id) })).filter((color) => color.sizes.length ? color.sizes.some((s) => s.stock === null || s.stock > 0) : color.stock === null || color.stock > 0)
-    return { ...product, imageUrl: variants.find((v) => v.imageUrl)?.imageUrl || product.imageUrl, variants, stock: variants.reduce((sum, v) => sum + (v.sizes.length ? v.sizes.reduce((n, s) => n + (s.stock ?? 1), 0) : (v.stock ?? 1)), 0) }
+    const variants = (colorsByModel.get(product.id) ?? []).map((color) => ({
+      ...color,
+      sizes: sizesByColor.get(color.id) ?? [],
+    })).filter((color) => color.sizes.length
+      ? color.sizes.some((size) => size.stock === null || size.stock > 0)
+      : color.stock === null || color.stock > 0)
+    return {
+      ...product,
+      imageUrl: variants.find((variant) => variant.imageUrl)?.imageUrl || product.imageUrl,
+      variants,
+      stock: variants.reduce((sum, variant) => sum + (variant.sizes.length
+        ? variant.sizes.reduce((n, size) => n + (size.stock ?? 1), 0)
+        : (variant.stock ?? 1)), 0),
+    }
   }).filter((product) => product.stock > 0)
 
   return (
