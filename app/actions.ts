@@ -535,8 +535,10 @@ export async function createOrder(input: OrderInput) {
         if (need.needed <= 0) continue
         const row = need.kind === 'size' ? sizeRows.find((s) => s.id === need.id)! : colorRows.find((c) => c.id === need.id)!
         if ((row.stock ?? 0) < need.needed) {
-          const model = getModel(need.kind === 'size' ? colorRows.find((c) => c.id === (row as typeof sizeRows[number] && sizeRows.find((s) => s.id === need.id)?.modelColorId))?.modelId ?? 0 : (row as typeof colorRows[number]).modelId)
-          throw new UserError(`المخزون غير كافٍ: ${model.name} — المتوفر ${row.stock ?? 0}`)
+          const colorId = need.kind === 'size' ? sizeRows.find((s) => s.id === need.id)!.modelColorId : need.id
+          const parentColor = colorRows.find((c) => c.id === colorId)!
+          const model = getModel(parentColor.modelId)
+          throw new UserError(`المخزون غير كافٍ: ${model.name} (${parentColor.color}) — المتوفر ${row.stock ?? 0}`)
         }
       }
       for (const need of stockNeeds.values()) {
