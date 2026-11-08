@@ -10,7 +10,7 @@ import { REGIONS } from '@/lib/constants'
 import type { CourierPublic } from '@/lib/db/schema'
 import { formatMoney } from '@/lib/format'
 
-const empty = { name: '', phone: '', feeWestBank: 18, feeJerusalem: 28, feeArea67: 50, feeInside: 68, active: true, integrationKey: '', apiEnabled: false }
+const empty = { name: '', phone: '', feeWestBank: 18, feeJerusalem: 28, feeArea67: 50, feeInside: 68, active: true, integrationKey: '', apiEnabled: false, sendOnOrderCreate: false }
 
 export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
   const uid = useId()
@@ -31,6 +31,7 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
       active: c.active,
       integrationKey: c.integrationKey ?? '',
       apiEnabled: c.apiEnabled,
+      sendOnOrderCreate: c.sendOnOrderCreate,
     })
   }
 
@@ -120,6 +121,17 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
             <input
               type="checkbox"
               className="size-4 accent-primary"
+              checked={form.sendOnOrderCreate}
+              disabled={!form.apiEnabled || form.integrationKey !== 'opost'}
+              onChange={(e) => setForm((f) => ({ ...f, sendOnOrderCreate: e.target.checked }))}
+            />
+            إرسال الشحنة تلقائياً إلى أوبتيموس عند إنشاء الطلب
+          </label>
+          <p className="text-xs text-muted-foreground">يبقى الإرسال التلقائي متوقفاً حتى تفعّليه بنفسك بعد اختبار الربط.</p>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="size-4 accent-primary"
               checked={form.active}
               onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))}
             />
@@ -170,7 +182,7 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
                     <p className="text-xs text-muted-foreground" dir="ltr">
                       {c.phone || '—'}
                     </p>
-                    {c.integrationKey ? <p className="mt-1 text-xs text-muted-foreground" dir="ltr">API: {c.integrationKey} · {c.apiEnabled ? 'مفعّل' : 'متوقف'}</p> : null}
+                    {c.integrationKey ? <p className="mt-1 text-xs text-muted-foreground" dir="ltr">API: {c.integrationKey} · {c.apiEnabled ? 'مفعّل' : 'متوقف'}{c.sendOnOrderCreate ? ' · إرسال تلقائي' : ''}</p> : null}
                   </div>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon-sm" onClick={() => edit(c)} aria-label={`تعديل ${c.name}`}>
