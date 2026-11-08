@@ -173,7 +173,7 @@ export async function submitStoreOrder(input: {
         checkoutRequestKey,
         notes: 'طلب من المتجر الإلكتروني',
       }).returning({ id: orders.id })
-      await tx.insert(orderItems).values(orderLines.map(({ colorId, ...line }) => ({ ...line, orderId: order.id })))
+      await tx.insert(orderItems).values(orderLines.map(({ colorId, sizeId, stockTracked, ...line }) => ({ ...line, orderId: order.id })))
       return order.id
     })
     return { ok: true, orderId }
