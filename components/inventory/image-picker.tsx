@@ -13,7 +13,7 @@ type ImagePickerProps = {
   compact?: boolean
 }
 
-const MAX_FILE_SIZE = 4 * 1024 * 1024
+const MAX_SOURCE_SIZE = 25 * 1024 * 1024
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 export function ImagePicker({ title, imageUrl, file, onFileChange, compact = false }: ImagePickerProps) {
@@ -39,8 +39,8 @@ export function ImagePicker({ title, imageUrl, file, onFileChange, compact = fal
       setError('اختاري صورة بصيغة JPG أو PNG أو WebP')
       return
     }
-    if (selected.size > MAX_FILE_SIZE) {
-      setError('حجم الصورة أكبر من 4 ميغابايت')
+    if (selected.size > MAX_SOURCE_SIZE) {
+      setError('حجم الصورة أكبر من 25 ميغابايت')
       return
     }
     onFileChange(selected)
@@ -68,6 +68,7 @@ export function ImagePicker({ title, imageUrl, file, onFileChange, compact = fal
         </label>
         {file ? <span className="truncate text-[11px] text-muted-foreground">{file.name}</span> : null}
         {error ? <span role="alert" className="text-xs text-destructive">{error}</span> : null}
+        <span className="text-[10px] text-muted-foreground">سيتم ضغط الصورة تلقائياً قبل الرفع</span>
       </div>
     </div>
   )
