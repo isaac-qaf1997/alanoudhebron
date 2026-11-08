@@ -96,9 +96,7 @@ export default async function ShopPage() {
               <div className="absolute inset-0 bg-cover bg-center opacity-45" style={{ backgroundImage: "linear-gradient(180deg, rgba(13,9,6,.3), rgba(13,9,6,.88)), url('https://commons.wikimedia.org/wiki/Special:FilePath/Ibrahimi_mosque_-Hebron.jpg')" }}/>
               <div className="absolute inset-0 bg-gradient-to-b from-[#120d09]/20 via-[#120d09]/55 to-[#120d09]/95"/>
               <div className="relative flex flex-col items-center">
-                <div className="mb-3 w-[118px] overflow-hidden rounded-2xl border border-[#d5ad6b]/80 bg-black shadow-[0_0_38px_rgba(205,163,94,.2)] sm:w-[140px]">
-                  <PhotoTile cell={0} label="الموديل 001" className="aspect-[.83] w-full bg-black"/>
-                </div>
+                <div className="mb-3 flex h-[118px] w-[118px] items-center justify-center rounded-2xl border border-[#d5ad6b]/80 bg-[#100b08] shadow-[0_0_38px_rgba(205,163,94,.2)] sm:h-[140px] sm:w-[140px]"><span className="font-serif text-7xl text-[#d8b477]">ع</span></div>
                 <p className="text-[2rem] font-semibold tracking-wide text-[#f2d29a] sm:text-4xl" style={{ fontFamily: 'Georgia, serif' }}>Al Anoud</p>
                 <h1 className="mt-2 text-2xl font-bold text-[#f8e3bd] sm:text-3xl">العنود للزي الشرعي</h1>
                 <div className="mt-4 flex w-full max-w-sm items-center gap-3 text-[#d9b475]">
