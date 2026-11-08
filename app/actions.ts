@@ -358,13 +358,15 @@ export type OrderInput = {
   trackingNumber?: string
   notes?: string
   discount?: number
-  items: { modelId: number; color: string; quantity: number }[]
+  items: { modelId: number; color: string; size?: string; quantity: number }[]
   exchanges: {
     returnedModelId: number
     returnedColor: string
+    returnedSize?: string
     returnedQty: number
     newModelId: number
     newColor: string
+    newSize?: string
     newQty: number
   }[]
 }
@@ -372,38 +374,41 @@ export type OrderInput = {
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
 async function adjustOrderStock(tx: Tx, orderId: number, direction: 1 | -1) {
-  // A transaction uses one PostgreSQL client; do not queue concurrent queries on it.
   const items = await tx.select().from(orderItems).where(eq(orderItems.orderId, orderId))
   const exchanges = await tx.select().from(orderExchanges).where(eq(orderExchanges.orderId, orderId))
-  const changes = new Map<string, { modelId: number; color: string; delta: number }>()
-  const add = (modelId: number | null, color: string | null, delta: number) => {
+  const colorChanges = new Map<number, number>()
+  const sizeChanges = new Map<string, { colorId: number; size: string; delta: number }>()
+  const add = async (modelId: number | null, colorName: string | null, sizeName: string | null, delta: number) => {
     if (!modelId) return
-    if (!color) throw new UserError('لا يمكن تحديث المخزون لأن أحد أسطر الطلب لا يحتوي على لون محفوظ.')
-    const key = `${modelId}\u0000${color}`
-    const current = changes.get(key)
-    if (current) current.delta += delta
-    else changes.set(key, { modelId, color, delta })
-  }
-  for (const item of items) add(item.modelId, item.color, direction * item.quantity)
-  for (const exchange of exchanges) {
-    add(exchange.newModelId, exchange.newColor, direction * exchange.newQty)
-    add(exchange.returnedModelId, exchange.returnedColor, -direction * exchange.returnedQty)
-  }
-  for (const change of changes.values()) {
-    if (change.delta === 0) continue
-    const updated = await tx.update(modelColors)
-      .set({ stock: sql`${modelColors.stock} + ${change.delta}` })
-      .where(and(
-        eq(modelColors.modelId, change.modelId),
-        eq(modelColors.color, change.color),
-        sql`${modelColors.stock} >= ${Math.max(0, -change.delta)}`,
-      ))
-      .returning({ id: modelColors.id })
-    if (updated.length !== 1) {
-      throw new UserError(change.delta < 0
-        ? 'المخزون غير كافٍ لإعادة تفعيل الطلب. راجعي الكميات المتوفرة أولاً.'
-        : 'تعذر العثور على لون مرتبط بالطلب لإرجاعه إلى المخزون.')
+    if (!colorName) throw new UserError('لا يمكن تحديث المخزون لأن أحد أسطر الطلب لا يحتوي على لون محفوظ.')
+    const [color] = await tx.select().from(modelColors).where(and(eq(modelColors.modelId, modelId), eq(modelColors.color, colorName))).limit(1)
+    if (!color) throw new UserError('تعذر العثور على لون مرتبط بالطلب.')
+    if (sizeName) {
+      const key = `${color.id}\u0000${sizeName}`
+      const current = sizeChanges.get(key)
+      if (current) current.delta += delta
+      else sizeChanges.set(key, { colorId: color.id, size: sizeName, delta })
+    } else if (color.stock !== null) {
+      colorChanges.set(color.id, (colorChanges.get(color.id) ?? 0) + delta)
     }
+  }
+  for (const item of items) await add(item.modelId, item.color, item.size, direction * item.quantity)
+  for (const exchange of exchanges) {
+    await add(exchange.newModelId, exchange.newColor, exchange.newSize, direction * exchange.newQty)
+    await add(exchange.returnedModelId, exchange.returnedColor, exchange.returnedSize, -direction * exchange.returnedQty)
+  }
+  for (const [colorId, delta] of colorChanges) {
+    if (!delta) continue
+    const changed = await tx.update(modelColors).set({ stock: sql`${modelColors.stock} + ${delta}` })
+      .where(and(eq(modelColors.id, colorId), sql`${modelColors.stock} >= ${Math.max(0, -delta)}`)).returning({ id: modelColors.id })
+    if (!changed.length) throw new UserError(delta < 0 ? 'المخزون غير كافٍ لإعادة تفعيل الطلب.' : 'تعذر تحديث مخزون اللون.')
+  }
+  for (const change of sizeChanges.values()) {
+    if (!change.delta) continue
+    const changed = await tx.update(modelSizes).set({ stock: sql`${modelSizes.stock} + ${change.delta}` })
+      .where(and(eq(modelSizes.modelColorId, change.colorId), eq(modelSizes.size, change.size), sql`${modelSizes.stock} >= ${Math.max(0, -change.delta)}`))
+      .returning({ id: modelSizes.id })
+    if (!changed.length) throw new UserError(change.delta < 0 ? 'المخزون غير كافٍ للمقاس المحدد.' : 'تعذر تحديث مخزون المقاس.')
   }
 }
 
@@ -425,14 +430,17 @@ export async function createOrder(input: OrderInput) {
     const items = (input.items ?? []).map((i) => ({
       modelId: id(i.modelId),
       color: text(i.color, 60),
+      size: text(i.size, 40) || null,
       quantity: qty(i.quantity),
     }))
     const exchanges = (input.exchanges ?? []).map((e) => ({
       returnedModelId: id(e.returnedModelId),
       returnedColor: text(e.returnedColor, 60),
+      returnedSize: text(e.returnedSize, 40) || null,
       returnedQty: qty(e.returnedQty),
       newModelId: id(e.newModelId),
       newColor: text(e.newColor, 60),
+      newSize: text(e.newSize, 40) || null,
       newQty: qty(e.newQty),
     }))
     if (items.length + exchanges.length === 0) throw new UserError('أضيفي منتجاً واحداً على الأقل')
