@@ -8,6 +8,7 @@ import {
   couriers,
   coupons,
   modelColors,
+  modelSizes,
   models,
   orderExchanges,
   orderItems,
@@ -129,34 +130,59 @@ export async function createModel(input: {
   price: number
   cost: number
   imageUrl?: string | null
-  colors: { color: string; stock: number; imageUrl?: string | null }[]
+  colors: { color: string; stock?: number | null; imageUrl?: string | null; sizes?: { size: string; stock?: number | null }[] }[]
 }) {
   return run(async () => {
     const name = text(input.name)
     if (!name) throw new UserError('اسم الموديل مطلوب')
-    const colors = (input.colors ?? [])
-      .map((c) => ({ color: text(c.color, 60), stock: qty(c.stock, true), imageUrl: imageUrl(c.imageUrl) }))
-      .filter((c) => c.color)
+    const colors = (input.colors ?? []).map((c) => ({
+      color: text(c.color, 60),
+      stock: c.sizes?.length ? null : (c.stock == null ? null : qty(c.stock, true)),
+      imageUrl: imageUrl(c.imageUrl),
+      sizes: (c.sizes ?? []).map((s) => ({ size: text(s.size, 40), stock: s.stock == null ? null : qty(s.stock, true) })),
+    })).filter((c) => c.color)
     if (colors.length === 0) throw new UserError('أضيفي لوناً واحداً على الأقل')
     const normalizedColors = colors.map((c) => c.color.normalize('NFKC').trim().toLowerCase())
-    if (new Set(normalizedColors).size !== colors.length) {
-      throw new UserError('يوجد لون مكرر حتى لو اختلفت طريقة كتابة الحروف')
+    if (new Set(normalizedColors).size !== colors.length) throw new UserError('يوجد لون مكرر')
+    for (const color of colors) {
+      const names = color.sizes.map((s) => s.size.normalize('NFKC').trim().toLowerCase())
+      if (color.sizes.some((s) => !s.size) || new Set(names).size !== names.length) throw new UserError('تأكدي من أسماء المقاسات وعدم تكرارها لكل لون')
+      if (color.sizes.length && color.stock !== null) throw new UserError('المقاسات والمخزون العام لا يجتمعان للون نفسه')
     }
     await db.transaction(async (tx) => {
-      const [model] = await tx
-        .insert(models)
-        .values({
-          name,
-          sku: text(input.sku, 60) || null,
-          price: amount(input.price),
-          cost: amount(input.cost),
-          imageUrl: imageUrl(input.imageUrl),
-        })
-        .returning({ id: models.id })
-      await tx.insert(modelColors).values(colors.map((c) => ({ ...c, modelId: model.id })))
+      const [model] = await tx.insert(models).values({
+        name, sku: text(input.sku, 60) || null, price: amount(input.price), cost: amount(input.cost),
+        imageUrl: imageUrl(input.imageUrl), isPublished: false,
+      }).returning({ id: models.id })
+      for (const color of colors) {
+        const [createdColor] = await tx.insert(modelColors).values({
+          modelId: model.id, color: color.color, stock: color.stock, imageUrl: color.imageUrl,
+        }).returning({ id: modelColors.id })
+        if (color.sizes.length) await tx.insert(modelSizes).values(color.sizes.map((s) => ({ modelColorId: createdColor.id, ...s })))
+      }
     })
   })
 }
+
+export async function saveColorSizes(colorId: number, sizes: { size: string; stock: number | null }[]) {
+  return run(async () => {
+    const cid = id(colorId)
+    if (!Array.isArray(sizes) || sizes.length > 30) throw new UserError('قائمة المقاسات غير صالحة')
+    const normalized = sizes.map((s) => ({ size: text(s.size, 40), stock: s.stock == null ? null : qty(s.stock, true) }))
+    const keys = normalized.map((s) => s.size.normalize('NFKC').toLowerCase())
+    if (normalized.some((s) => !s.size) || new Set(keys).size !== keys.length) throw new UserError('تأكدي من أسماء المقاسات وعدم تكرارها')
+    await db.transaction(async (tx) => {
+      const [color] = await tx.select().from(modelColors).where(eq(modelColors.id, cid)).for('update')
+      if (!color) throw new UserError('اللون غير موجود')
+      await tx.delete(modelSizes).where(eq(modelSizes.modelColorId, cid))
+      if (normalized.length) {
+        await tx.insert(modelSizes).values(normalized.map((s) => ({ modelColorId: cid, ...s })))
+        await tx.update(modelColors).set({ stock: null }).where(eq(modelColors.id, cid))
+      }
+    })
+  })
+}
+
 
 export async function setModelPublished(modelId: number, published: boolean) {
   return run(async () => {
@@ -208,7 +234,7 @@ export async function deleteModel(modelId: number) {
   })
 }
 
-export async function addModelColor(modelId: number, color: string, stock: number, image?: string | null) {
+export async function addModelColor(modelId: number, color: string, stock: number | null, image?: string | null) {
   return run(async () => {
     const name = text(color, 60)
     if (!name) throw new UserError('اسم اللون مطلوب')
@@ -217,7 +243,7 @@ export async function addModelColor(modelId: number, color: string, stock: numbe
       sql`${modelColors.modelId} = ${mid} AND lower(btrim(${modelColors.color})) = lower(btrim(${name}))`,
     )
     if (existing.length) throw new UserError('هذا اللون موجود مسبقاً')
-    await db.insert(modelColors).values({ modelId: mid, color: name, stock: qty(stock, true), imageUrl: imageUrl(image) })
+    await db.insert(modelColors).values({ modelId: mid, color: name, stock: stock == null ? null : qty(stock, true), imageUrl: imageUrl(image) })
   })
 }
 
@@ -227,9 +253,12 @@ export async function updateModelColorImage(colorId: number, image: string | nul
   })
 }
 
-export async function setColorStock(colorId: number, stock: number) {
+export async function setColorStock(colorId: number, stock: number | null) {
   return run(async () => {
-    await db.update(modelColors).set({ stock: qty(stock, true) }).where(eq(modelColors.id, id(colorId)))
+    const cid = id(colorId)
+    const [size] = await db.select({ id: modelSizes.id }).from(modelSizes).where(eq(modelSizes.modelColorId, cid)).limit(1)
+    if (size) throw new UserError('هذا اللون يستخدم مقاسات؛ عدّلي كمية كل مقاس بدلاً من المخزون العام.')
+    await db.update(modelColors).set({ stock: stock == null ? null : qty(stock, true) }).where(eq(modelColors.id, cid))
   })
 }
 
