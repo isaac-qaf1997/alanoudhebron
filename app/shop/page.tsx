@@ -1,8 +1,6 @@
 import Link from 'next/link'
-import { asc, desc, eq, inArray } from 'drizzle-orm'
-import { db } from '@/lib/db'
-import { models, modelColors, modelSizes } from '@/lib/db/schema'
 import { getCurrentUser } from '@/lib/auth/session'
+import { getStoreProducts } from '@/lib/queries'
 
 export const metadata = {
   title: 'العنود للزي شرعي | أثواب وعبايات وفساتين تطريز',
@@ -28,36 +26,13 @@ function BrandMark() {
 }
 
 export default async function ShopPage() {
-  const currentUser = await getCurrentUser()
-  const products = await db.select({
-    id: models.id, name: models.name, price: models.price, imageUrl: models.imageUrl,
-  }).from(models).where(eq(models.isPublished, true)).orderBy(desc(models.createdAt))
-
-  const colors = products.length
-    ? await db.select().from(modelColors).where(inArray(modelColors.modelId, products.map((product) => product.id))).orderBy(asc(modelColors.id))
-    : []
-  const sizes = colors.length
-    ? await db.select().from(modelSizes).where(inArray(modelSizes.modelColorId, colors.map((color) => color.id))).orderBy(asc(modelSizes.id))
-    : []
-
-  const sizesByColor = new Map<number, typeof sizes>()
-  const colorsByModel = new Map<number, typeof colors>()
-  for (const size of sizes) {
-    const list = sizesByColor.get(size.modelColorId) ?? []
-    list.push(size)
-    sizesByColor.set(size.modelColorId, list)
-  }
-  for (const color of colors) {
-    const list = colorsByModel.get(color.modelId) ?? []
-    list.push(color)
-    colorsByModel.set(color.modelId, list)
-  }
+  const [currentUser, products] = await Promise.all([
+    getCurrentUser(),
+    getStoreProducts(),
+  ])
 
   const available = products.map((product) => {
-    const variants = (colorsByModel.get(product.id) ?? []).map((color) => ({
-      ...color,
-      sizes: sizesByColor.get(color.id) ?? [],
-    })).filter((color) => color.sizes.length
+    const variants = product.colors.filter((color) => color.sizes.length
       ? color.sizes.some((size) => size.stock === null || size.stock > 0)
       : color.stock === null || color.stock > 0)
     return {
@@ -125,7 +100,7 @@ export default async function ShopPage() {
         </div>
         {available.length ? <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {available.map((product) => <Link key={product.id} href={`/products/${product.id}`} className="group overflow-hidden rounded-2xl border border-[#e4d8c7] bg-white transition hover:-translate-y-1 hover:shadow-lg">
-            <div className="aspect-[3/4] overflow-hidden bg-[#eee5d8]">{product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105"/> : <div className="flex h-full flex-col items-center justify-center gap-3 text-[#9a876c]"><span className="text-4xl">✦</span><span className="text-sm">أضيفي صورة المنتج</span></div>}</div>
+            <div className="aspect-[3/4] overflow-hidden bg-[#eee5d8]">{product.imageUrl ? <img src={product.imageUrl} alt={product.name} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-500 group-hover:scale-105"/> : <div className="flex h-full flex-col items-center justify-center gap-3 text-[#9a876c]"><span className="text-4xl">✦</span><span className="text-sm">أضيفي صورة المنتج</span></div>}</div>
             <div className="p-4"><h3 className="font-semibold">{product.name}</h3><p className="mt-2 font-bold text-[#8a6841]">{product.price.toFixed(2)} ₪</p><p className="mt-1 text-xs text-[#8b8175]">{product.variants.length} ألوان متاحة</p></div>
           </Link>)}
         </div> : <div className="rounded-2xl border border-dashed border-[#cdbb9f] bg-white/80 p-12 text-center text-[#766d62]"><span className="mb-3 block text-3xl text-[#b08c58]">✦</span><p className="font-semibold text-[#514536]">قريباً… تشكيلتكِ الخاصة</p><p className="mt-2 text-sm">ستظهر منتجاتكِ هنا بعد إضافتها وتحديث مخزونها من لوحة الإدارة.</p></div>}
