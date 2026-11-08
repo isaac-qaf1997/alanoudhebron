@@ -3,6 +3,7 @@
 import { ImagePlus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
+import { cloudinaryImageUrl } from '@/lib/images'
 
 type ImagePickerProps = {
   title: string
@@ -45,7 +46,7 @@ export function ImagePicker({ title, imageUrl, file, onFileChange, compact = fal
     onFileChange(selected)
   }
 
-  const source = previewUrl || imageUrl || null
+  const source = previewUrl || cloudinaryImageUrl(imageUrl, compact ? 160 : 240)
 
   return (
     <div className={cn('flex min-w-0 items-center gap-3 rounded-lg border border-dashed border-border bg-muted/20 p-2', compact ? 'gap-2' : 'p-3')}>
@@ -53,7 +54,7 @@ export function ImagePicker({ title, imageUrl, file, onFileChange, compact = fal
         {source ? (
           // The source is a Cloudinary URL or a temporary local preview URL.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={source} alt={`معاينة ${title}`} className="h-full w-full object-cover" />
+          <img src={source} alt={`معاينة ${title}`} loading="lazy" decoding="async" className="h-full w-full object-cover" />
         ) : (
           <ImagePlus className={compact ? 'size-4' : 'size-6'} />
         )}
