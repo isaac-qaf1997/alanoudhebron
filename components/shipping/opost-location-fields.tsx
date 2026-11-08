@@ -114,6 +114,9 @@ export function OpostLocationFields({ city, area, onCityChange, onAreaChange, ci
             <option value="__manual__">المنطقة غير موجودة — إدخال يدوي</option>
           </select>
         )}
+        {manualArea && !manualCity && !failed ? (
+          <button type="button" onClick={() => { setManualArea(false); onAreaChange('') }} className="mt-1 text-xs text-[#765637] underline">اختيار حي من قائمة شركة التوصيل</button>
+        ) : null}
         {!manualArea && !manualCity && !failed && areas.length > 0 ? (
           <span className="mt-1 block text-xs text-stone-500">القائمة محدثة من شركة التوصيل؛ اختاري الحي كما يظهر عندهم.</span>
         ) : null}
