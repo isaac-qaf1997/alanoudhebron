@@ -20,6 +20,8 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
   const [error, setError] = useState<string | null>(null)
   const [checkingOpost, setCheckingOpost] = useState(false)
   const [opostCheck, setOpostCheck] = useState<{ ok: boolean; message: string } | null>(null)
+  const [syncingOpost, setSyncingOpost] = useState(false)
+  const [opostSync, setOpostSync] = useState<{ ok: boolean; message: string } | null>(null)
 
   function edit(c: CourierPublic) {
     setEditingId(c.id)
@@ -50,6 +52,36 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
       if (result.ok) reset()
       else setError(result.error)
     })
+  }
+
+  async function syncOpostStatuses() {
+    setSyncingOpost(true)
+    setOpostSync(null)
+    try {
+      const response = await fetch('/api/admin/opost/sync', { method: 'POST', cache: 'no-store' })
+      const result = await response.json() as {
+        ok?: boolean
+        error?: string
+        pagesRead?: number
+        totalShipments?: number
+        matched?: number
+        changed?: number
+        unchanged?: number
+        unmatched?: number
+      }
+      if (!response.ok || !result.ok) {
+        setOpostSync({ ok: false, message: result.error || 'تعذرت مزامنة حالات الشحن.' })
+      } else {
+        setOpostSync({
+          ok: true,
+          message: `اكتملت القراءة: ${result.pagesRead} صفحة من Opost، ${result.matched} شحنة مطابقة، وتم تحديث حالة ${result.changed} طلب. غير المطابق: ${result.unmatched}.`,
+        })
+      }
+    } catch {
+      setOpostSync({ ok: false, message: 'تعذر الوصول إلى خدمة مزامنة Opost. حاولي مرة أخرى.' })
+    } finally {
+      setSyncingOpost(false)
+    }
   }
 
   async function checkOpostConnection() {
@@ -231,6 +263,12 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
                     </Button>
                     {opostCheck ? (
                       <p role="status" className={opostCheck.ok ? 'text-xs text-success' : 'text-xs text-destructive'}>{opostCheck.message}</p>
+                    ) : null}
+                    <Button type="button" variant="outline" size="sm" onClick={syncOpostStatuses} disabled={syncingOpost || !c.apiEnabled}>
+                      {syncingOpost ? 'جارٍ مزامنة الحالات…' : 'مزامنة حالات Opost الآن'}
+                    </Button>
+                    {opostSync ? (
+                      <p role="status" className={opostSync.ok ? 'text-xs text-success' : 'text-xs text-destructive'}>{opostSync.message}</p>
                     ) : null}
                     <p className="text-xs text-muted-foreground">فحص قراءة فقط؛ لا ينشئ شحنات ولا يرسل بيانات طلبات.</p>
                   </div>
