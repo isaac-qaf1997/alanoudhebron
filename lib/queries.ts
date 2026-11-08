@@ -1,5 +1,4 @@
 import { and, asc, desc, eq, inArray, isNotNull, sql, type SQL } from 'drizzle-orm'
-import type { PgColumn } from 'drizzle-orm/pg-core'
 import { db } from '@/lib/db'
 import {
   couriers,
