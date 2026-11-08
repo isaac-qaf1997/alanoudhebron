@@ -1,0 +1,116 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+
+type LocationOption = { id: string; name: string }
+type Props = {
+  city: string
+  area: string
+  onCityChange: (value: string) => void
+  onAreaChange: (value: string) => void
+  cityId?: string
+  onCityIdChange?: (value: string) => void
+}
+
+export function OpostLocationFields({ city, area, onCityChange, onAreaChange, cityId, onCityIdChange }: Props) {
+  const [cities, setCities] = useState<LocationOption[]>([])
+  const [areas, setAreas] = useState<LocationOption[]>([])
+  const [loadingCities, setLoadingCities] = useState(true)
+  const [loadingAreas, setLoadingAreas] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const [manualCity, setManualCity] = useState(false)
+  const [manualArea, setManualArea] = useState(false)
+  const [selectedCityId, setSelectedCityId] = useState(cityId || '')
+
+  useEffect(() => {
+    let active = true
+    fetch('/api/shipping/opost/locations', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => {
+        if (!active) return
+        if (!data.ok || !Array.isArray(data.cities) || !data.cities.length) throw new Error('no city list')
+        setCities(data.cities)
+        const existing = data.cities.find((item: LocationOption) => item.name === city)
+        if (existing) {
+          setSelectedCityId(existing.id)
+          onCityIdChange?.(existing.id)
+        } else if (city) {
+          setManualCity(true)
+        }
+      })
+      .catch(() => { if (active) setFailed(true) })
+      .finally(() => { if (active) setLoadingCities(false) })
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => {
+    if (!selectedCityId || manualCity) { setAreas([]); return }
+    let active = true
+    setLoadingAreas(true)
+    fetch(`/api/shipping/opost/locations?cityId=${encodeURIComponent(selectedCityId)}`, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => {
+        if (!active) return
+        if (!data.ok || !Array.isArray(data.areas)) throw new Error('no area list')
+        setAreas(data.areas)
+        if (area && !data.areas.some((item: LocationOption) => item.name === area)) {
+          onAreaChange('')
+        }
+      })
+      .catch(() => { if (active) setFailed(true) })
+      .finally(() => { if (active) setLoadingAreas(false) })
+    return () => { active = false }
+  }, [selectedCityId, manualCity])
+
+  function chooseCity(value: string) {
+    if (value === '__manual__') {
+      setManualCity(true)
+      setSelectedCityId('')
+      onCityIdChange?.('')
+      onCityChange('')
+      onAreaChange('')
+      return
+    }
+    const option = cities.find(item => item.id === value)
+    if (!option) return
+    setManualCity(false)
+    setSelectedCityId(option.id)
+    onCityIdChange?.(option.id)
+    onCityChange(option.name)
+    onAreaChange('')
+    setManualArea(false)
+  }
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <label className="block text-sm">
+        المدينة
+        {manualCity || failed ? (
+          <input required maxLength={80} value={city} onChange={e => { onCityChange(e.target.value); onAreaChange('') }} className="mt-2 w-full rounded-xl border p-3" placeholder="اكتبي المدينة"/>
+        ) : (
+          <select required value={selectedCityId} onChange={e => chooseCity(e.target.value)} className="mt-2 w-full rounded-xl border p-3" disabled={loadingCities}>
+            <option value="">{loadingCities ? 'جارٍ تحميل المدن…' : 'اختاري المدينة'}</option>
+            {cities.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+            <option value="__manual__">المدينة غير موجودة — إدخال يدوي</option>
+          </select>
+        )}
+      </label>
+      <label className="block text-sm">
+        المنطقة / الحي
+        {manualArea || manualCity || failed ? (
+          <input required maxLength={100} value={area} onChange={e => onAreaChange(e.target.value)} className="mt-2 w-full rounded-xl border p-3" placeholder="اكتبي المنطقة أو الحي"/>
+        ) : (
+          <select required value={area} onChange={e => onAreaChange(e.target.value)} className="mt-2 w-full rounded-xl border p-3" disabled={!selectedCityId || loadingAreas}>
+            <option value="">{loadingAreas ? 'جارٍ تحميل الأحياء…' : selectedCityId ? 'اختاري المنطقة / الحي' : 'اختاري المدينة أولاً'}</option>
+            {areas.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
+            <option value="__manual__">المنطقة غير موجودة — إدخال يدوي</option>
+          </select>
+        )}
+        {!manualArea && !manualCity && !failed && areas.length > 0 ? (
+          <span className="mt-1 block text-xs text-stone-500">القائمة محدثة من شركة التوصيل؛ اختاري الحي كما يظهر عندهم.</span>
+        ) : null}
+      </label>
+      {failed ? <p className="sm:col-span-2 text-xs text-amber-700">تعذر جلب القائمة من شركة التوصيل؛ يمكنكِ إدخال العنوان يدوياً، وسيُراجع قبل إرسال الشحنة.</p> : null}
+    </div>
+  )
+}
