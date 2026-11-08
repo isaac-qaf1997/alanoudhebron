@@ -149,7 +149,7 @@ export function ModelForm() {
                 aria-label={`مقاسات اللون ${index + 1}`}
                 placeholder="مقاسات اختيارية: S:2, M:4 أو S, M"
                 value={c.sizes}
-                onChange={(e) => setColors((list) => list.map((x) => x.key === c.key ? { ...x, sizes: e.target.value } : x))}
+                onChange={(e) => setColors((list) => list.map((x) => x.key === c.key ? { ...x, sizes: e.target.value, stock: e.target.value.trim() ? null : x.stock } : x))}
               />
               <p className="text-xs text-muted-foreground">اتركي المقاسات فارغة للون بدون مقاسات. اكتبي الكمية بعد النقطتين، أو اتركيها فارغة لمخزون غير متابع.</p>
               <ImagePicker
