@@ -31,6 +31,15 @@ export function ModelForm() {
   function submit(e: React.FormEvent) {
     e.preventDefault()
     setMessage(null)
+    const invalidSizes = colors.some((color) => {
+      if (!color.sizes.length) return false
+      const names = color.sizes.map((size) => size.size.normalize('NFKC').trim().toLowerCase())
+      return names.some((name) => !name) || new Set(names).size !== names.length
+    })
+    if (invalidSizes) {
+      setMessage({ type: 'error', text: 'اكتبي اسم كل مقاس وتأكدي من عدم تكراره قبل الحفظ.' })
+      return
+    }
     startTransition(async () => {
       try {
         const [modelImageUrl, preparedColors] = await Promise.all([
