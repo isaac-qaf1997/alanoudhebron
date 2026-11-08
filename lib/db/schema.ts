@@ -39,10 +39,19 @@ export const modelColors = pgTable('model_colors', {
   id: serial('id').primaryKey(),
   modelId: integer('model_id').notNull(),
   color: text('color').notNull(),
-  stock: integer('stock').notNull().default(0),
+  stock: integer('stock'),
   imageUrl: text('image_url'),
 }, (table) => ({
   modelColorUnique: uniqueIndex('model_colors_model_color_normalized_uq').on(table.modelId, sql`lower(btrim(${table.color}))`),
+}))
+
+export const modelSizes = pgTable('model_sizes', {
+  id: serial('id').primaryKey(),
+  modelColorId: integer('model_color_id').notNull(),
+  size: text('size').notNull(),
+  stock: integer('stock'),
+}, (table) => ({
+  colorSizeUnique: uniqueIndex('model_sizes_color_size_normalized_uq').on(table.modelColorId, sql`lower(btrim(${table.size}))`),
 }))
 
 export const couriers = pgTable('couriers', {
@@ -125,6 +134,7 @@ export const orderItems = pgTable('order_items', {
   modelId: integer('model_id'),
   modelName: text('model_name').notNull(),
   color: text('color'),
+  size: text('size'),
   quantity: integer('quantity').notNull(),
   unitPrice: money('unit_price').notNull(),
   unitCost: money('unit_cost').notNull().default(0),
@@ -136,12 +146,14 @@ export const orderExchanges = pgTable('order_exchanges', {
   returnedModelId: integer('returned_model_id'),
   returnedName: text('returned_name').notNull(),
   returnedColor: text('returned_color'),
+  returnedSize: text('returned_size'),
   returnedQty: integer('returned_qty').notNull(),
   returnedPrice: money('returned_price').notNull(),
   returnedCost: money('returned_cost').notNull().default(0),
   newModelId: integer('new_model_id'),
   newName: text('new_name').notNull(),
   newColor: text('new_color'),
+  newSize: text('new_size'),
   newQty: integer('new_qty').notNull(),
   newPrice: money('new_price').notNull(),
   newCost: money('new_cost').notNull().default(0),
