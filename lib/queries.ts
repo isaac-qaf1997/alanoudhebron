@@ -53,6 +53,11 @@ export async function getModels() {
 
 export type ModelWithColors = Awaited<ReturnType<typeof getModels>>[number]
 
+export async function getActiveCourierCount() {
+  const [result] = await db.select({ count: sql<number>`count(*)::int` }).from(couriers).where(eq(couriers.active, true))
+  return result?.count ?? 0
+}
+
 export async function getCouriers(): Promise<CourierPublic[]> {
   const rows = await db.select().from(couriers).orderBy(asc(couriers.id))
   return rows.map(({ apiKeyEncrypted, secretTokenEncrypted, integrationKey, ...courier }) => ({
