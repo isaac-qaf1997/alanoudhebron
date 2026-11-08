@@ -13,14 +13,18 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const inStock = product.colors.filter((variant) => variant.sizes.length
     ? variant.sizes.some((size) => size.stock === null || size.stock > 0)
     : variant.stock === null || variant.stock > 0)
-  const image = cloudinaryImageUrl(inStock.find((variant) => variant.imageUrl)?.imageUrl || product.imageUrl, 1200)
+  const image = cloudinaryImageUrl(product.imageUrl || inStock.find((variant) => variant.imageUrl)?.imageUrl, 1200)
+  const generalGallery = (product.galleryUrls ?? []).map((url) => cloudinaryImageUrl(url, 900)).filter((url): url is string => Boolean(url))
   if (!inStock.length) notFound()
   return <main dir="rtl" className="min-h-dvh bg-[#faf8f4] text-[#29251f]">
     <header className="border-b border-[#e9e2d7] bg-white px-5 py-5"><div className="mx-auto flex max-w-6xl justify-between"><Link href="/shop" className="text-xl font-bold text-[#7b5b36]">العنود</Link><Link href="/shop" className="text-sm">العودة للمتجر</Link></div></header>
     <section className="mx-auto grid max-w-6xl gap-10 px-5 py-10 md:grid-cols-2">
-      <div className="aspect-[4/5] overflow-hidden rounded-3xl bg-[#eee8df]">{image ? <img src={image} alt={product.name} fetchPriority="high" decoding="async" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-[#a69a89]">صورة المنتج قريباً</div>}</div>
+      <div className="space-y-3">
+        <div className="aspect-[4/5] overflow-hidden rounded-3xl bg-[#eee8df]">{image ? <img src={image} alt={product.name} fetchPriority="high" decoding="async" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-[#a69a89]">صورة المنتج قريباً</div>}</div>
+        {generalGallery.length ? <div className="grid grid-cols-3 gap-2">{generalGallery.map((url, index) => <img key={url + index} src={url} alt={`صورة إضافية ${product.name} ${index + 1}`} loading="lazy" className="aspect-square w-full rounded-xl object-cover" />)}</div> : null}
+      </div>
       <div className="py-4"><p className="text-sm text-[#8a6841]">العنود للزي الشرعي</p><h1 className="mt-3 text-3xl font-bold">{product.name}</h1><p className="mt-5 text-2xl font-bold text-[#8a6841]">{product.price.toFixed(2)} ₪</p>
-        <AddToCart modelId={product.id} colors={inStock.map((variant) => ({ color: variant.color, stock: variant.stock, sizes: variant.sizes.map((size) => ({ size: size.size, stock: size.stock })) }))}/>
+        <AddToCart modelId={product.id} colors={inStock.map((variant) => ({ color: variant.color, stock: variant.stock, imageUrl: cloudinaryImageUrl(variant.imageUrl, 900), galleryUrls: (variant.galleryUrls ?? []).map((url) => cloudinaryImageUrl(url, 900)).filter((url): url is string => Boolean(url)), sizes: variant.sizes.map((size) => ({ size: size.size, stock: size.stock })) }))}/>
         <Link href="/cart" className="mt-4 inline-flex text-sm text-[#765637] underline">الانتقال إلى السلة</Link>
       </div>
     </section>
