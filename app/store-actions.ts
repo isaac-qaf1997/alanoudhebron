@@ -119,10 +119,10 @@ export async function submitStoreOrder(input: {
 
     const orderId = await db.transaction(async (tx) => {
       const modelIds = [...new Set(items.map((item) => item.modelId))]
-      const [modelRows, colorRows] = await Promise.all([
-        tx.select().from(models).where(inArray(models.id, modelIds)),
-        tx.select().from(modelColors).where(inArray(modelColors.modelId, modelIds)).for('update'),
-      ])
+      // A transaction is backed by one PostgreSQL client; sequential reads avoid
+      // concurrent client.query() calls and their queueing/deprecation warning.
+      const modelRows = await tx.select().from(models).where(inArray(models.id, modelIds))
+      const colorRows = await tx.select().from(modelColors).where(inArray(modelColors.modelId, modelIds)).for('update')
       let itemsTotal = 0
       let costTotal = 0
       const orderLines = items.map((item) => {
