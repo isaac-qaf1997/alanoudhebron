@@ -16,8 +16,9 @@ async function loadCities() {
       .then(async response => {
         const data = await response.json()
         if (!response.ok || !data.ok || !Array.isArray(data.cities) || !data.cities.length) throw new Error('no city list')
-        citiesCache = data.cities
-        return citiesCache
+        const loaded = data.cities as LocationOption[]
+        citiesCache = loaded
+        return loaded
       })
       .catch(error => { citiesRequest = null; throw error })
   }
