@@ -1,10 +1,10 @@
 import { AppHeader } from '@/components/app-header'
 import { requireUser } from '@/lib/auth/session'
-import { getCouriers } from '@/lib/queries'
+import { getActiveCourierCount } from '@/lib/queries'
 
 export default async function DashboardLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const user = await requireUser()
-  const activeCouriers = user.role === 'admin' ? (await getCouriers()).filter((courier) => courier.active).length : 0
+  const activeCouriers = user.role === 'admin' ? await getActiveCourierCount() : 0
 
   return (
     <>
