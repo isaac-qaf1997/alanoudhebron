@@ -31,6 +31,7 @@ export const models = pgTable('models', {
   price: money('price').notNull().default(0),
   cost: money('cost').notNull().default(0),
   imageUrl: text('image_url'),
+  galleryUrls: jsonb('gallery_urls').$type<string[]>().notNull().default([]),
   isPublished: boolean('is_published').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
@@ -41,6 +42,7 @@ export const modelColors = pgTable('model_colors', {
   color: text('color').notNull(),
   stock: integer('stock'),
   imageUrl: text('image_url'),
+  galleryUrls: jsonb('gallery_urls').$type<string[]>().notNull().default([]),
 }, (table) => ({
   modelColorUnique: uniqueIndex('model_colors_model_color_normalized_uq').on(table.modelId, sql`lower(btrim(${table.color}))`),
 }))
