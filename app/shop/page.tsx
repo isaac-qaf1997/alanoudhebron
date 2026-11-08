@@ -47,7 +47,7 @@ export default async function ShopPage() {
   }).filter((product) => product.stock > 0)
 
   return (
-    <main dir="rtl" className="min-h-dvh overflow-hidden bg-[#f8f5ef] text-[#29251f]">
+    <main dir="rtl" className="min-h-dvh overflow-hidden bg-[#100b08] text-[#f3dfbd]">
       <div className="border-b border-[#8f6a39] bg-[#100c09] px-4 py-2 text-center text-[10px] tracking-wide text-[#e6d3ae] sm:text-xs">
         العنود للزي الشرعي · الخليل <span className="mx-2 text-[#bd9b62]">✦</span> أناقة من روح التراث
       </div>
@@ -76,7 +76,7 @@ export default async function ShopPage() {
         </div>
       </header>
 
-      <section className="relative mx-auto max-w-[1500px] overflow-hidden bg-[#100b08] px-2 pb-8 pt-3 text-[#f8e8c8] sm:px-5 sm:pt-5">
+      <section id="collections" className="relative mx-auto max-w-[1500px] overflow-hidden bg-[#100b08] px-2 pb-8 pt-3 text-[#f8e8c8] sm:px-5 sm:pt-5">
         <div className="pointer-events-none absolute inset-0 opacity-25" style={{ backgroundImage: 'radial-gradient(ellipse at 12% 12%, #b88b4b 0, transparent 32%), radial-gradient(ellipse at 90% 85%, #9e6c32 0, transparent 28%)' }}/>
         <div className="relative overflow-hidden rounded-[1.4rem] border border-[#bd9457]/70 bg-[#100d0b] shadow-[0_25px_80px_rgba(0,0,0,.45)] sm:rounded-[2rem]">
           <div className="grid min-h-[620px] md:min-h-[690px] md:grid-cols-2">
@@ -141,21 +141,15 @@ export default async function ShopPage() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl grid-cols-1 gap-3 px-4 pb-8 sm:grid-cols-3 sm:px-7">
-        <div className="flex items-center justify-center gap-3 rounded-xl border border-[#e9e0d4] bg-[#f2ece2] px-4 py-4 text-xs text-[#6e604e]"><span className="text-lg text-[#a17b48]">✧</span> تصاميم مختارة بعناية</div>
-        <div className="flex items-center justify-center gap-3 rounded-xl border border-[#e9e0d4] bg-[#f2ece2] px-4 py-4 text-xs text-[#6e604e]"><span className="text-lg text-[#a17b48]">♡</span> الدفع عند الاستلام</div>
-        <div className="flex items-center justify-center gap-3 rounded-xl border border-[#e9e0d4] bg-[#f2ece2] px-4 py-4 text-xs text-[#6e604e]"><span className="text-lg text-[#a17b48]">◇</span> الدفع المسبق متاح</div>
-      </section>
-
-      <section id="products" className="mx-auto max-w-7xl px-4 py-10 sm:px-7 sm:py-14">
-        <div className="mb-7 flex items-end justify-between border-b border-[#e8dfd2] pb-4">
-          <div><p className="text-[10px] font-semibold tracking-[.22em] text-[#a17b48]">THE LATEST</p><h2 className="mt-2 text-2xl font-semibold text-[#30271e]">تشكيلة العنود</h2></div>
-          <span className="text-xs text-[#887d6d]">{available.length} منتج</span>
+      <section id="products" className="mx-auto max-w-7xl bg-[#100b08] px-4 py-10 text-[#f2dfbd] sm:px-7 sm:py-14">
+        <div className="mb-7 flex items-end justify-between border-b border-[#8f6a39] pb-4">
+          <div><p className="text-[10px] font-semibold tracking-[.22em] text-[#a17b48]">THE LATEST</p><h2 className="mt-2 text-2xl font-semibold text-[#f1d8ae]">تشكيلة العنود</h2></div>
+          <span className="text-xs text-[#c7aa7d]">{available.length} منتج</span>
         </div>
         {available.length ? <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4">
-          {available.map((product) => <Link key={product.id} href={`/products/${product.id}`} className="group overflow-hidden rounded-2xl border border-[#e9e0d4] bg-white transition hover:-translate-y-1 hover:shadow-xl hover:shadow-[#6d5637]/10">
+          {available.map((product) => <Link key={product.id} href={`/products/${product.id}`} className="group overflow-hidden rounded-2xl border border-[#8f6a39] bg-[#201710] transition hover:-translate-y-1 hover:shadow-xl hover:shadow-[#6d5637]/20">
             <div className="aspect-[3/4] overflow-hidden bg-[#eee8de]">{product.imageUrl ? <img src={product.imageUrl} alt={product.name} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-700 group-hover:scale-105"/> : <div className="flex h-full items-center justify-center text-sm text-[#9a8b77]">صورة المنتج قريباً</div>}</div>
-            <div className="p-3 sm:p-4"><h3 className="text-sm font-medium text-[#3b3329]">{product.name}</h3><p className="mt-2 font-semibold text-[#9a7444]">{product.price.toFixed(2)} ₪</p><p className="mt-1 text-[11px] text-[#988b79]">{product.variants.length} ألوان متاحة</p></div>
+            <div className="p-3 sm:p-4"><h3 className="text-sm font-medium text-[#f1dfc2]">{product.name}</h3><p className="mt-2 font-semibold text-[#e2bc7e]">{product.price.toFixed(2)} ₪</p><p className="mt-1 text-[11px] text-[#c4ad8e]">{product.variants.length} ألوان متاحة</p></div>
           </Link>)}
         </div> : <div className="border-y border-[#e6dccd] py-14 text-center"><Logo/><p className="mt-5 font-semibold text-[#514536]">تشكيلتنا الجديدة قريباً</p><p className="mt-2 text-sm text-[#928675]">ستظهر المنتجات هنا بعد إضافتها ونشرها من لوحة الإدارة.</p></div>}
       </section>
