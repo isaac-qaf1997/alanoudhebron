@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { ModelCard } from '@/components/inventory/model-card'
 import { ModelForm } from '@/components/inventory/model-form'
+import { PublishAllDraftsButton } from '@/components/inventory/publish-all-drafts'
 import { EmptyState, Panel } from '@/components/ui/panel'
 import { getModels } from '@/lib/queries'
 import { requireRole } from '@/lib/auth/session'
@@ -15,7 +16,7 @@ export default async function InventoryPage() {
   return (
     <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[400px_minmax(0,1fr)]">
       <ModelForm />
-      <Panel title="الموديلات" description={`${models.length} موديل · ${pieces} قطعة متوفرة`}>
+      <Panel title="الموديلات" description={`${models.length} موديل · ${pieces} قطعة متوفرة`}><div className="mb-4 flex justify-end"><PublishAllDraftsButton /></div>
         {models.length === 0 ? (
           <EmptyState>لا توجد موديلات بعد. أضيفي أول موديل مع ألوانه وكمياته.</EmptyState>
         ) : (
