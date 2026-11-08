@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
   try {
     const cityId = request.nextUrl.searchParams.get('cityId')
     if (cityId) {
-      if (!/^\\d{1,12}$/.test(cityId)) return NextResponse.json({ ok: false, error: 'المدينة المحددة غير صالحة.' }, { status: 400 })
+      if (!/^\d{1,12}$/.test(cityId)) return NextResponse.json({ ok: false, error: 'المدينة المحددة غير صالحة.' }, { status: 400 })
       const cities = await getAll('/api/resources/cities', token)
       const city = cities.find(row => id(row) === cityId)
       if (!city) return NextResponse.json({ ok: false, error: 'المدينة غير موجودة في قائمة شركة التوصيل.' }, { status: 404 })
