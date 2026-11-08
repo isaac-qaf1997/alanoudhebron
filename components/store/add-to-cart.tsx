@@ -86,7 +86,7 @@ export default function AddToCart({ modelId, colors }: { modelId: number; colors
         </select>
       </label>
 
-      {(selected?.imageUrl || selected?.galleryUrls.length) ? (
+      {selected && (selected.imageUrl || selected.galleryUrls.length) ? (
         <div className="space-y-2">
           <p className="text-sm font-semibold">صور لون {selected.color}</p>
           <div className="flex flex-wrap gap-2">
