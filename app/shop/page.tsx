@@ -77,6 +77,8 @@ export default async function ShopPage() {
             <div className="mt-7 flex flex-wrap justify-center gap-3 text-xs text-[#d7c6aa] md:justify-start sm:text-sm"><span>أثواب فلسطينية</span><span>✦</span><span>تطريز تراثي</span><span>✦</span><span>عبايات</span></div>
           </div>
           <div className="relative flex min-h-[270px] items-center justify-center overflow-hidden border-t border-[#c7a36b]/20 bg-[radial-gradient(ellipse_at_center,rgba(173,135,79,.22),transparent_65%)] md:min-h-full md:border-r md:border-t-0">
+            {available[0]?.imageUrl ? <img src={available[0].imageUrl} alt="من تشكيلات العنود" className="absolute inset-0 h-full w-full object-cover opacity-35" /> : null}
+            <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-[#211d18]/80 via-[#211d18]/25 to-[#211d18]/40" />
             <div aria-hidden="true" className="absolute inset-5 rounded-[48%] border border-[#c7a36b]/30 md:inset-10"/>
             <div aria-hidden="true" className="absolute inset-10 rounded-[48%] border border-dashed border-[#c7a36b]/25 md:inset-16"/>
             <svg viewBox="0 0 360 390" className="relative h-[290px] w-full max-w-[360px] sm:h-[350px]" fill="none" role="img" aria-label="زخرفة مستوحاة من التطريز الفلسطيني">
@@ -91,6 +93,42 @@ export default async function ShopPage() {
             </svg>
             <span className="absolute bottom-5 text-[10px] tracking-[.28em] text-[#c9aa73]">PALESTINIAN HERITAGE · HEBRON</span>
           </div>
+        </div>
+      </section>
+
+      <section aria-label="تصفحي أقسام المتجر" className="mx-auto max-w-7xl px-4 pt-10 sm:px-6 sm:pt-14">
+        <div className="mb-5 text-center">
+          <p className="text-xs font-semibold tracking-[.18em] text-[#9a774b]">اختاري ما يشبهك</p>
+          <h2 className="mt-2 text-xl font-bold text-[#30291f] sm:text-2xl">أناقة لكل مناسبة</h2>
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { title: 'الأثواب الفلسطينية', note: 'روح التراث بتفاصيل مطرزة', symbol: '✧' },
+            { title: 'العبايات', note: 'أناقة هادئة لكل يوم', symbol: '◇' },
+            { title: 'فساتين التطريز', note: 'تفاصيل تلفت الأنظار', symbol: '✦' },
+            { title: 'الدشاديش', note: 'راحة وأناقة', symbol: '❋' },
+          ].map((category) => (
+            <a key={category.title} href="#products" className="group rounded-2xl border border-[#e4d8c7] bg-white/80 px-3 py-5 text-center transition hover:-translate-y-1 hover:border-[#c5a16b] hover:bg-white hover:shadow-md sm:px-5 sm:py-7">
+              <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-[#d8c4a3] bg-[#f7f0e5] text-xl text-[#9a774b] transition group-hover:bg-[#211d18] group-hover:text-[#e0c18a]">{category.symbol}</span>
+              <span className="mt-3 block text-sm font-bold text-[#3c3328] sm:text-base">{category.title}</span>
+              <span className="mt-1 block text-[11px] text-[#8b8175] sm:text-xs">{category.note}</span>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto mt-9 grid max-w-7xl grid-cols-2 gap-3 px-4 sm:grid-cols-3 sm:px-6">
+        <div className="rounded-xl border border-[#e4d8c7] bg-[#efe6d8] px-3 py-4 text-center">
+          <span className="block text-lg text-[#9a774b]">✦</span>
+          <p className="mt-1 text-xs font-semibold text-[#514536] sm:text-sm">تصاميم مختارة بعناية</p>
+        </div>
+        <div className="rounded-xl border border-[#e4d8c7] bg-[#efe6d8] px-3 py-4 text-center">
+          <span className="block text-lg text-[#9a774b]">♡</span>
+          <p className="mt-1 text-xs font-semibold text-[#514536] sm:text-sm">الدفع عند الاستلام</p>
+        </div>
+        <div className="col-span-2 rounded-xl border border-[#e4d8c7] bg-[#efe6d8] px-3 py-4 text-center sm:col-span-1">
+          <span className="block text-lg text-[#9a774b]">◇</span>
+          <p className="mt-1 text-xs font-semibold text-[#514536] sm:text-sm">متاح الدفع المسبق</p>
         </div>
       </section>
 
