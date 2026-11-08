@@ -1,3 +1,5 @@
+> **ملاحظة تحديث (نوفمبر 2026):** هذا الملف يصف أساس التكامل العام القديم، وليس دليل التشغيل الحالي. المسار الفعلي للـ webhook هو `/api/shipping/webhooks/[providerKey]`، والتنفيذ الحالي موجود في `lib/shipping/dispatch.ts` و`lib/shipping/opost.ts`. راجعي `SHIPPING_INTEGRATIONS.md` و`OPOST_SETUP.md` قبل أي إعداد فعلي. لا تفعّلي إرسال الشحنات الحقيقية قبل اختبار بيئة المزود والحصول على موافقة صريحة.
+
 # Shipping API Integration Setup
 
 This project now contains a provider-neutral shipping adapter for the Next.js App Router.

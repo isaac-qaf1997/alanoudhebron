@@ -7,11 +7,11 @@ The shipping module supports multiple courier records. Each courier can optional
 - `COURIER_CARRIER_A_CREATE_PATH` (optional; defaults to `/shipments`)
 - `COURIER_CARRIER_A_WEBHOOK_SECRET`
 
-When a courier is assigned to a new order, or selected orders are marked as shipped, the server sends a normalized JSON payload to the configured carrier endpoint. The endpoint is expected to accept a bearer token and return JSON containing `id` or `shipmentId`, and/or `trackingNumber`. Inactive couriers are not sent shipments.
+The server sends a normalized JSON payload only when an authorized server action explicitly invokes dispatch and the selected courier is active with API integration enabled. Automatic dispatch-on-create is disabled by default (`sendOnOrderCreate=false`); keep it disabled until the provider account, credentials, address mapping, and sandbox tests are verified. The endpoint is expected to accept a bearer token and return JSON containing `id` or `shipmentId`, and/or `trackingNumber`. Inactive couriers are not sent shipments.
 
 Webhook URL: `https://YOUR_DOMAIN/api/shipping/webhooks/carrier_a`. Send the configured secret in `x-webhook-secret`.
 
-Normalized webhook JSON fields: `status`, and at least one of `trackingNumber`, `shipmentId`, or `reference` (`ORDER-123`). `eventId` is recommended; if omitted, the payload hash is used for de-duplication. Supported statuses include `preparing`, `in_transit`/`shipped`, `delivered`, and `returned` (plus common English and Arabic aliases).
+Normalized webhook JSON fields: `status`, and at least one of `trackingNumber`, `shipmentId`, or `reference` (`ORDER-123`). `eventId` is recommended; if omitted, the payload hash is used for de-duplication. Supported statuses include `preparing`, `in_transit`/`shipped`, `delivered`, `returned`, and `cancelled` (plus common English and Arabic aliases).
 
 ## Database upgrade
 
@@ -36,6 +36,6 @@ Webhook example:
 }
 ```
 
-The webhook accepts `x-webhook-secret`, limits request bodies to 64 KB, and de-duplicates events. If the carrier omits an event ID, the raw payload hash is used as a fallback. Status changes are transactional; transitions into or out of returned/cancelled state adjust stock.
+The webhook accepts `x-webhook-secret`, limits request bodies to 64 KB, and de-duplicates events. If the carrier omits an event ID, the raw payload hash is used as a fallback. Status changes are transactional; the first transition into `returned` or `cancelled` restores stock. Those terminal states are not automatically reactivated by later carrier events.
 
 To add another courier, create it with a unique integration key, add its matching `COURIER_<KEY>_API_URL`, `API_TOKEN`, optional `CREATE_PATH`, and `WEBHOOK_SECRET` environment variables, then map its API/webhook format in a provider-specific adapter. Test create-shipment, idempotency, delivered, and returned events in the carrier sandbox before live use.

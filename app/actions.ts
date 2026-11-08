@@ -625,15 +625,21 @@ export async function bulkShip(orderIds: number[]) {
     const ids = [...new Set(orderIds.map(id))]
     if (ids.length === 0) return
     const eligible = await db.select({ id: orders.id }).from(orders).where(
-      sql`${inArray(orders.id, ids)} and ${orders.status} = 'preparing' and ${orders.courierId} is not null`,
+      and(inArray(orders.id, ids), eq(orders.status, 'preparing'), sql`${orders.courierId} IS NOT NULL`),
     )
-    await db
+    if (eligible.length === 0) return
+    const shipped = await db
       .update(orders)
       .set({ status: 'shipped', shippedAt: sql`coalesce(${orders.shippedAt}, now())` })
-      .where(sql`${inArray(orders.id, ids)} and ${orders.status} = 'preparing'`)
-    // Dispatch is best-effort: orders remain saved even if a carrier API is temporarily unavailable.
+      .where(and(
+        inArray(orders.id, eligible.map((order) => order.id)),
+        eq(orders.status, 'preparing'),
+        sql`${orders.courierId} IS NOT NULL`,
+      ))
+      .returning({ id: orders.id })
+    // Dispatch only orders that were actually moved to shipped.
     const { dispatchShipment } = await import('@/lib/shipping/dispatch')
-    for (const order of eligible) await dispatchShipment(order.id)
+    for (const order of shipped) await dispatchShipment(order.id)
   })
 }
 

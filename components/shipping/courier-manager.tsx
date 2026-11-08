@@ -10,7 +10,7 @@ import { REGIONS } from '@/lib/constants'
 import type { CourierPublic } from '@/lib/db/schema'
 import { formatMoney } from '@/lib/format'
 
-const empty = { name: '', phone: '', feeWestBank: 18, feeJerusalem: 28, feeArea67: 50, feeInside: 68, active: true, integrationKey: '', apiEnabled: false }
+const empty = { name: '', phone: '', feeWestBank: 20, feeJerusalem: 30, feeArea67: 50, feeInside: 70, active: true, integrationKey: '', apiEnabled: false }
 
 export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
   const uid = useId()
