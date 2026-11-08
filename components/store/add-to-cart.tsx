@@ -5,7 +5,7 @@ import Link from 'next/link'
 
 const KEY = 'alanoud-cart-v1'
 type SizeVariant = { size: string; stock: number | null }
-type ColorVariant = { color: string; stock: number | null; sizes: SizeVariant[] }
+type ColorVariant = { color: string; stock: number | null; imageUrl: string | null; galleryUrls: string[]; sizes: SizeVariant[] }
 type CartLine = { modelId: number; color: string; size?: string; quantity: number }
 
 export default function AddToCart({ modelId, colors }: { modelId: number; colors: ColorVariant[] }) {
@@ -85,6 +85,17 @@ export default function AddToCart({ modelId, colors }: { modelId: number; colors
           {colors.map((variant) => <option key={variant.color} value={variant.color}>{variant.color}</option>)}
         </select>
       </label>
+
+      {(selected?.imageUrl || selected?.galleryUrls.length) ? (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold">صور لون {selected.color}</p>
+          <div className="flex flex-wrap gap-2">
+            {[selected.imageUrl, ...(selected.galleryUrls ?? [])].filter((url): url is string => Boolean(url)).map((url, index) => (
+              <img key={url + index} src={url} alt={`لون ${selected.color} - صورة ${index + 1}`} loading="lazy" className="size-20 rounded-lg border object-cover" />
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {sizeVariants.length > 0 ? (
         <fieldset className="space-y-3">
