@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { asc, eq } from 'drizzle-orm'
+import { asc, and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { models, modelColors } from '@/lib/db/schema'
 import AddToCart from '@/components/store/add-to-cart'
@@ -9,7 +9,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const { id } = await params
   const productId = Number(id)
   if (!Number.isInteger(productId) || productId <= 0) notFound()
-  const [product] = await db.select({ id: models.id, name: models.name, price: models.price, imageUrl: models.imageUrl }).from(models).where(eq(models.id, productId)).limit(1)
+  const [product] = await db.select({ id: models.id, name: models.name, price: models.price, imageUrl: models.imageUrl }).from(models).where(and(eq(models.id, productId), eq(models.isPublished, true))).limit(1)
   if (!product) notFound()
   const variants = await db.select({ color: modelColors.color, stock: modelColors.stock, imageUrl: modelColors.imageUrl }).from(modelColors).where(eq(modelColors.modelId, productId)).orderBy(asc(modelColors.id))
   const inStock = variants.filter((v) => v.stock > 0)
