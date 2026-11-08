@@ -30,9 +30,6 @@ export function computeStats(orders: OrderFull[], couriers: CourierPublic[]) {
       netProfit += order.total - order.costTotal - order.courierFee
       collected += order.total
       collectedFees += order.courierFee
-    } else if (status === 'returned') {
-      netProfit -= order.courierFee
-      collectedFees += order.courierFee
     }
 
     const courier = order.courierId ? courierStats.get(order.courierId) : undefined
@@ -43,10 +40,8 @@ export function computeStats(orders: OrderFull[], couriers: CourierPublic[]) {
         courier.collected += order.total
         courier.fees += order.courierFee
       }
-      if (status === 'returned') {
-        courier.returned += 1
-        courier.fees += order.courierFee
-      }
+      if (status === 'returned') courier.returned += 1
+      // Returned parcels do not incur a courier fee for this store.
     }
   }
 
