@@ -195,6 +195,8 @@ export function ModelCard({ model }: { model: ModelWithColors }) {
   )
 }
 
+let nextSizeDraftKey = -1
+
 function ColorRow({
   color,
   stock,
@@ -217,11 +219,17 @@ function ColorRow({
   onDelete: () => void
 }) {
   const [value, setValue] = useState<number | null>(stock)
-  const [sizesValue, setSizesValue] = useState(sizes.map((s) => s.stock == null ? s.size : s.size + ':' + s.stock).join(', '))
+  const [sizeRows, setSizeRows] = useState(() => sizes.map((size) => ({
+    key: size.id,
+    size: size.size,
+    stock: size.stock,
+  })))
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePending, setImagePending] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
   const low = stock !== null && stock <= 2
+  const total = sizeRows.reduce((sum, size) => sum + (size.stock ?? 0), 0)
+  const hasUntracked = sizeRows.some((size) => size.stock === null)
 
   async function saveImage() {
     if (!imageFile) return
@@ -237,30 +245,57 @@ function ColorRow({
     }
   }
 
+  function saveSizes() {
+    const clean = sizeRows.filter((entry) => entry.size.trim()).map(({ size, stock: quantity }) => ({
+      size: size.trim(),
+      stock: quantity,
+    }))
+    onSaveSizes(clean)
+  }
+
   return (
     <li className="flex flex-col gap-2 rounded-lg border border-border/60 p-2">
       <div className="flex items-center gap-2 text-sm">
         <span className="flex-1 truncate font-medium">{color}</span>
-        {sizes.length ? <span className="text-xs text-muted-foreground">{sizes.length} مقاسات</span> : <>
+        {sizeRows.length ? (
+          <span className="text-xs text-muted-foreground">{sizeRows.length} مقاسات · {total} قطعة{hasUntracked ? ' + غير محدد' : ''}</span>
+        ) : <>
           {low ? <span className="text-xs text-destructive">{stock === 0 ? 'نفد' : 'منخفض'}</span> : null}
           <Input aria-label={`كمية ${color}`} type="number" min={0} placeholder="غير متابع" value={value ?? ''} onChange={(e) => setValue(e.target.value === '' ? null : Math.max(0, Number(e.target.value) || 0))} className={cn('h-8 w-24', low && 'border-destructive/50')} />
           <Button size="icon-sm" variant={value !== stock ? 'default' : 'ghost'} disabled={disabled || value === stock} onClick={() => onSave(value)} aria-label={`حفظ كمية ${color}`}><Check className="size-4" /></Button>
         </>}
-
         <Button size="icon-sm" variant="ghost" onClick={onDelete} disabled={disabled} aria-label={`حذف اللون ${color}`}>
           <Trash2 className="size-4 text-muted-foreground" />
         </Button>
       </div>
-      <div className="flex gap-2">
-        <Input aria-label={`مقاسات ${color}`} placeholder="مقاسات: S:2, M:4 أو S, M" value={sizesValue} onChange={(e) => setSizesValue(e.target.value)} className="h-8"/>
-        <Button size="sm" variant="outline" disabled={disabled} onClick={() => {
-          const parsed = sizesValue.trim() ? sizesValue.split(',').map((entry) => {
-            const [size, quantity] = entry.trim().split(':')
-            return { size: size.trim(), stock: quantity === undefined || quantity.trim() === '' ? null : Number(quantity) }
-          }) : []
-          onSaveSizes(parsed)
-        }}>حفظ المقاسات</Button>
+
+      <div className="rounded-md bg-muted/30 p-2">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <span className="text-xs font-medium">المقاسات والكميات</span>
+          {sizeRows.length ? <span className="text-xs text-muted-foreground">المجموع: {total} قطعة{hasUntracked ? ' · بعض الكميات غير محددة' : ''}</span> : <span className="text-xs text-muted-foreground">لا توجد مقاسات</span>}
+        </div>
+        {sizeRows.map((entry, index) => (
+          <div key={entry.key} className="mb-2 grid grid-cols-[1fr_88px_auto] gap-2">
+            <Input aria-label={`اسم المقاس ${index + 1}`} placeholder="38 أو S أو ون سايز" value={entry.size} className="h-9"
+              onChange={(e) => setSizeRows((rows) => rows.map((row) => row.key === entry.key ? { ...row, size: e.target.value } : row))} />
+            <Input aria-label={`كمية المقاس ${entry.size || index + 1}`} type="number" min={0} placeholder="الكمية" value={entry.stock ?? ''} className="h-9"
+              onChange={(e) => setSizeRows((rows) => rows.map((row) => row.key === entry.key ? { ...row, stock: e.target.value === '' ? null : Math.max(0, Number(e.target.value) || 0) } : row))} />
+            <Button type="button" size="icon" variant="ghost" aria-label="حذف المقاس" onClick={() => setSizeRows((rows) => rows.filter((row) => row.key !== entry.key))}>
+              <Trash2 className="size-4" />
+            </Button>
+          </div>
+        ))}
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={() => setSizeRows((rows) => [...rows, { key: nextSizeDraftKey--, size: '', stock: 0 }])}>
+            <Plus className="size-3.5" /> إضافة مقاس
+          </Button>
+          <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={saveSizes}>
+            <Check className="size-3.5" /> حفظ المقاسات والكميات
+          </Button>
+          {sizeRows.length ? <Button type="button" size="sm" variant="ghost" disabled={disabled} onClick={() => setSizeRows([])}>إلغاء المقاسات</Button> : null}
+        </div>
       </div>
+
       <div className="flex flex-col gap-1">
         <ImagePicker compact title={`صورة ${color}`} imageUrl={imageUrl} file={imageFile} onFileChange={setImageFile} />
         {imageFile ? (
