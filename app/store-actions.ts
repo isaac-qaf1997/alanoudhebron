@@ -54,7 +54,7 @@ export async function submitStoreOrder(input: {
   paymentReference?: string
   checkoutRequestKey: string
   couponCode?: string
-  items: { modelId: number; color: string; quantity: number }[]
+  items: { modelId: number; color: string; size?: string; quantity: number }[]
 }): Promise<StoreOrderResult> {
   try {
     const customerName = clean(input.customerName, 120)
