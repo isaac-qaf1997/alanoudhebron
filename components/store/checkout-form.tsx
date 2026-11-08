@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { checkStoreCoupon, submitStoreOrder } from '@/app/store-actions'
 import { CITY_REGIONS, REGIONS } from '@/lib/constants'
+import { OpostLocationFields } from '@/components/shipping/opost-location-fields'
 
 type Product = { id: number; name: string; price: number; colors: { color: string; stock: number }[] }
 type CartLine = { modelId: number; color: string; quantity: number }
@@ -82,11 +83,13 @@ export default function CheckoutForm({ products }: { products: Product[] }) {
       <h1 className="text-2xl font-bold">بيانات التوصيل</h1>
       <label className="block text-sm">الاسم الكامل<input required maxLength={120} value={form.customerName} onChange={e=>update('customerName',e.target.value)} className="mt-2 w-full rounded-xl border p-3"/></label>
       <label className="block text-sm">رقم الهاتف<input required type="tel" maxLength={30} value={form.phone} onChange={e=>update('phone',e.target.value)} className="mt-2 w-full rounded-xl border p-3"/></label>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block text-sm">المدينة<input required value={form.city} onChange={e=>update('city',e.target.value)} className="mt-2 w-full rounded-xl border p-3"/></label>
-        <label className="block text-sm">منطقة التوصيل<select value={form.region} onChange={e=>update('region',e.target.value)} className="mt-2 w-full rounded-xl border p-3"><option value="west_bank">الضفة الغربية</option><option value="jerusalem">القدس</option><option value="area_67">مناطق 67</option><option value="inside">مناطق الداخل</option></select></label>
-      </div>
-      <label className="block text-sm">المنطقة / الحي<input required maxLength={100} value={form.area} onChange={e=>update('area',e.target.value)} className="mt-2 w-full rounded-xl border p-3"/></label>
+      <OpostLocationFields
+        city={form.city}
+        area={form.area}
+        onCityChange={value => update('city', value)}
+        onAreaChange={value => update('area', value)}
+      />
+      <label className="block text-sm">منطقة التوصيل<select value={form.region} onChange={e=>update('region',e.target.value)} className="mt-2 w-full rounded-xl border p-3"><option value="west_bank">الضفة الغربية</option><option value="jerusalem">القدس</option><option value="area_67">مناطق 67</option><option value="inside">مناطق الداخل</option></select></label>
       <label className="block text-sm">العنوان بالتفصيل<textarea required value={form.address} onChange={e=>update('address',e.target.value)} className="mt-2 w-full rounded-xl border p-3"/></label>
       <section className="rounded-xl border p-4">
         <h2 className="font-semibold">عندك كود خصم؟</h2>
