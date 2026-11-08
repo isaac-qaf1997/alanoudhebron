@@ -10,7 +10,12 @@ const SHIPMENT_TYPE_ID = process.env.OPOST_SHIPMENT_TYPE_ID || '1'
 
 type ApiRecord = Record<string, unknown>
 function records(payload: unknown): ApiRecord[] {
-  if (Array.isArray(payload)) return payload as ApiRecord[]
+  if (Array.isArray(payload)) {
+    if (payload.length === 1 && payload[0] && typeof payload[0] === 'object' && 'data' in (payload[0] as ApiRecord)) {
+      return records(payload[0])
+    }
+    return payload as ApiRecord[]
+  }
   if (!payload || typeof payload !== 'object') return []
   const obj = payload as ApiRecord
   for (const key of ['data', 'results', 'cities', 'areas']) {
@@ -21,6 +26,39 @@ function records(payload: unknown): ApiRecord[] {
     }
   }
   return []
+}
+function nextPageUrl(payload: unknown): string | null {
+  const root = Array.isArray(payload) && payload.length === 1 ? payload[0] : payload
+  if (!root || typeof root !== 'object') return null
+  const pagination = (root as ApiRecord).pagination
+  if (!pagination || typeof pagination !== 'object') return null
+  const next = (pagination as ApiRecord).next_page_url
+  return typeof next === 'string' && next.trim() ? next : null
+}
+async function allRecords(path: string, token: string): Promise<ApiRecord[]> {
+  let nextUrl = new URL(path, BASE).toString()
+  const visited = new Set<string>()
+  const collected: ApiRecord[] = []
+  for (let page = 0; page < 20 && nextUrl; page += 1) {
+    const parsed = new URL(nextUrl, BASE)
+    if (parsed.origin !== BASE || !parsed.pathname.startsWith('/api/resources/')) {
+      throw new Error('رابط صفحة بيانات Opost غير موثوق.')
+    }
+    const url = parsed.toString()
+    if (visited.has(url)) throw new Error('تكرار غير متوقع في صفحات بيانات Opost.')
+    visited.add(url)
+    const payload = await apiGet(url, token)
+    collected.push(...records(payload))
+    const candidate = nextPageUrl(payload)
+    if (!candidate) return collected
+    const next = new URL(candidate, BASE)
+    if (next.origin !== BASE || !next.pathname.startsWith('/api/resources/')) {
+      throw new Error('رابط الصفحة التالية في Opost غير صالح.')
+    }
+    nextUrl = next.toString()
+  }
+  if (nextUrl) throw new Error('تجاوز جلب بيانات Opost الحد الآمن لعدد الصفحات.')
+  return collected
 }
 function label(row: ApiRecord): string {
   return String(row.name ?? row.title ?? row.label ?? row.ar_name ?? row.name_ar ?? '').trim()
@@ -40,10 +78,10 @@ async function apiGet(path: string, token: string): Promise<unknown> {
   return response.json()
 }
 async function resolveLocation(cityName: string, areaName: string, token: string) {
-  const cities = records(await apiGet('/api/resources/cities', token))
+  const cities = await allRecords('/api/resources/cities', token)
   const city = cities.find(row => norm(label(row)) === norm(cityName))
   if (!city || !idOf(city)) throw new Error(`لم أتمكن من مطابقة مدينة "${cityName}" في قائمة Opost. راجعي اسم المدينة.`)
-  const areas = records(await apiGet(`/api/resources/areas?city=${encodeURIComponent(idOf(city))}`, token))
+  const areas = await allRecords(`/api/resources/areas?city=${encodeURIComponent(idOf(city))}`, token)
   const area = areas.find(row => norm(label(row)) === norm(areaName))
   if (!area || !idOf(area)) throw new Error(`منطقة "${areaName}" غير موجودة ضمن مدينة "${cityName}" في Opost. لن نرسل عنواناً غير مؤكد.`)
   return { cityId: idOf(city), areaId: idOf(area) }
