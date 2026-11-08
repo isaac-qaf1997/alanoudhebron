@@ -11,26 +11,30 @@ import { OpostLocationFields } from '@/components/shipping/opost-location-fields
 import { formatMoney } from '@/lib/format'
 import type { ModelWithColors } from '@/lib/queries'
 
-type ItemLine = { key: number; modelId: string; color: string; quantity: number }
+type ItemLine = { key: number; modelId: string; color: string; size: string; quantity: number }
 type ExchangeLine = {
   key: number
   returnedModelId: string
   returnedColor: string
+  returnedSize: string
   returnedQty: number
   newModelId: string
   newColor: string
+  newSize: string
   newQty: number
 }
 
 let lineKey = 0
-const newItem = (): ItemLine => ({ key: ++lineKey, modelId: '', color: '', quantity: 1 })
+const newItem = (): ItemLine => ({ key: ++lineKey, modelId: '', color: '', size: '', quantity: 1 })
 const newExchange = (): ExchangeLine => ({
   key: ++lineKey,
   returnedModelId: '',
   returnedColor: '',
+  returnedSize: '',
   returnedQty: 1,
   newModelId: '',
   newColor: '',
+  newSize: '',
   newQty: 1,
 })
 
@@ -99,13 +103,15 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
         discount: appliedDiscount,
         region: customer.region,
         courierId: customer.courierId ? Number(customer.courierId) : null,
-        items: filledItems.map((i) => ({ modelId: Number(i.modelId), color: i.color, quantity: i.quantity })),
+        items: filledItems.map((i) => ({ modelId: Number(i.modelId), color: i.color, size: i.size || undefined, quantity: i.quantity })),
         exchanges: filledExchanges.map((x) => ({
           returnedModelId: Number(x.returnedModelId),
           returnedColor: x.returnedColor,
+          returnedSize: x.returnedSize || undefined,
           returnedQty: x.returnedQty,
           newModelId: Number(x.newModelId),
           newColor: x.newColor,
+          newSize: x.newSize || undefined,
           newQty: x.newQty,
         })),
       })
@@ -154,7 +160,7 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
                 <Select
                   aria-label="الموديل"
                   value={item.modelId}
-                  onChange={(e) => updateItem(item.key, { modelId: e.target.value, color: '' })}
+                  onChange={(e) => updateItem(item.key, { modelId: e.target.value, color: '', size: '' })}
                 >
                   <option value="">اختاري الموديل</option>
                   {models.map((m) => (
@@ -168,7 +174,7 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
                     aria-label="اللون"
                     value={item.color}
                     disabled={!model}
-                    onChange={(e) => updateItem(item.key, { color: e.target.value })}
+                    onChange={(e) => updateItem(item.key, { color: e.target.value, size: '' })}
                   >
                     <option value="">اللون</option>
                     {model?.colors.map((c) => (
@@ -186,6 +192,7 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
                     onChange={(e) => updateItem(item.key, { quantity: Math.max(1, Number(e.target.value) || 1) })}
                   />
                 </div>
+                {selectedColor?.sizes?.length ? <Select aria-label="المقاس" value={item.size} onChange={(e) => updateItem(item.key, { size: e.target.value })}><option value="">اختاري المقاس</option>{selectedColor.sizes.map((s) => <option key={s.id} value={s.size} disabled={s.stock === 0}>{s.size}{s.stock === null ? '' : ' (' + s.stock + ' متوفر)'}</option>)}</Select> : null}
                 {productImage ? <ProductImagePreview src={productImage} label={`${model?.name ?? ''} — ${item.color}`} /> : null}
               </div>
             )
@@ -240,7 +247,7 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
                 <Select
                   aria-label="الموديل المُرجع"
                   value={ex.returnedModelId}
-                  onChange={(e) => updateExchange(ex.key, { returnedModelId: e.target.value, returnedColor: '' })}
+                  onChange={(e) => updateExchange(ex.key, { returnedModelId: e.target.value, returnedColor: '', returnedSize: '' })}
                 >
                   <option value="">اختاري الموديل المُرجع</option>
                   {models.map((m) => (
@@ -254,7 +261,7 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
                     aria-label="لون القطعة المُرجعة"
                     value={ex.returnedColor}
                     disabled={!returned}
-                    onChange={(e) => updateExchange(ex.key, { returnedColor: e.target.value })}
+                    onChange={(e) => updateExchange(ex.key, { returnedColor: e.target.value, returnedSize: '' })}
                   >
                     <option value="">اللون</option>
                     {returned?.colors.map((c) => (
@@ -271,12 +278,13 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
                     onChange={(e) => updateExchange(ex.key, { returnedQty: Math.max(1, Number(e.target.value) || 1) })}
                   />
                 </div>
+                {returnedColor?.sizes?.length ? <Select aria-label="مقاس القطعة المُرجعة" value={ex.returnedSize} onChange={(e) => updateExchange(ex.key, { returnedSize: e.target.value })}><option value="">المقاس المُرجع</option>{returnedColor.sizes.map(s => <option key={s.id} value={s.size}>{s.size}</option>)}</Select> : null}
                 {returnedImage ? <ProductImagePreview src={returnedImage} label={`${returned?.name ?? ''} — ${ex.returnedColor}`} /> : null}
                 <p className="text-xs font-medium text-muted-foreground">القطعة الجديدة</p>
                 <Select
                   aria-label="الموديل الجديد"
                   value={ex.newModelId}
-                  onChange={(e) => updateExchange(ex.key, { newModelId: e.target.value, newColor: '' })}
+                  onChange={(e) => updateExchange(ex.key, { newModelId: e.target.value, newColor: '', newSize: '' })}
                 >
                   <option value="">اختاري الموديل الجديد</option>
                   {models.map((m) => (
@@ -290,7 +298,7 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
                     aria-label="لون القطعة الجديدة"
                     value={ex.newColor}
                     disabled={!replacement}
-                    onChange={(e) => updateExchange(ex.key, { newColor: e.target.value })}
+                    onChange={(e) => updateExchange(ex.key, { newColor: e.target.value, newSize: '' })}
                   >
                     <option value="">اللون</option>
                     {replacement?.colors.map((c) => (
@@ -307,6 +315,7 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
                     onChange={(e) => updateExchange(ex.key, { newQty: Math.max(1, Number(e.target.value) || 1) })}
                   />
                 </div>
+                {replacementColor?.sizes?.length ? <Select aria-label="مقاس القطعة الجديدة" value={ex.newSize} onChange={(e) => updateExchange(ex.key, { newSize: e.target.value })}><option value="">المقاس الجديد</option>{replacementColor.sizes.map(s => <option key={s.id} value={s.size} disabled={s.stock === 0}>{s.size}{s.stock === null ? '' : ' (' + s.stock + ' متوفر)'}</option>)}</Select> : null}
                 {replacementImage ? <ProductImagePreview src={replacementImage} label={`${replacement?.name ?? ''} — ${ex.newColor}`} /> : null}
                 {returned && replacement ? (
                   <p className="text-xs">
