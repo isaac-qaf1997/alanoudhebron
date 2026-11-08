@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { getCurrentUser } from '@/lib/auth/session'
 import { getStoreProducts } from '@/lib/queries'
+import { cloudinaryImageUrl } from '@/lib/images'
 
 export const metadata = {
   title: 'العنود للزي شرعي | أثواب وعبايات وفساتين تطريز',
@@ -37,7 +38,7 @@ export default async function ShopPage() {
       : color.stock === null || color.stock > 0)
     return {
       ...product,
-      imageUrl: variants.find((variant) => variant.imageUrl)?.imageUrl || product.imageUrl,
+      imageUrl: cloudinaryImageUrl(variants.find((variant) => variant.imageUrl)?.imageUrl || product.imageUrl, 640),
       variants,
       stock: variants.reduce((sum, variant) => sum + (variant.sizes.length
         ? variant.sizes.reduce((n, size) => n + (size.stock ?? 1), 0)
