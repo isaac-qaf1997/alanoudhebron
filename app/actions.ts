@@ -46,6 +46,12 @@ function imageUrl(value: unknown) {
   }
 }
 
+function imageUrls(value: unknown) {
+  if (value == null) return [] as string[]
+  if (!Array.isArray(value) || value.length > 20) throw new UserError('يمكن إضافة حتى 20 صورة إضافية لكل معرض')
+  return [...new Set(value.map((entry) => imageUrl(entry)).filter((entry): entry is string => Boolean(entry)))]
+}
+
 function amount(value: unknown) {
   const n = Number(value)
   if (!Number.isFinite(n) || n < 0 || n > 1_000_000) throw new UserError('قيمة مالية غير صالحة')
@@ -130,7 +136,8 @@ export async function createModel(input: {
   price: number
   cost: number
   imageUrl?: string | null
-  colors: { color: string; stock?: number | null; imageUrl?: string | null; sizes?: { size: string; stock?: number | null }[] }[]
+  galleryUrls?: string[]
+  colors: { color: string; stock?: number | null; imageUrl?: string | null; galleryUrls?: string[]; sizes?: { size: string; stock?: number | null }[] }[]
 }) {
   return run(async () => {
     const name = text(input.name)
@@ -139,6 +146,7 @@ export async function createModel(input: {
       color: text(c.color, 60),
       stock: c.sizes?.length ? null : (c.stock == null ? null : qty(c.stock, true)),
       imageUrl: imageUrl(c.imageUrl),
+      galleryUrls: imageUrls(c.galleryUrls),
       sizes: (c.sizes ?? []).map((s) => ({ size: text(s.size, 40), stock: s.stock == null ? null : qty(s.stock, true) })),
     })).filter((c) => c.color)
     if (colors.length === 0) throw new UserError('أضيفي لوناً واحداً على الأقل')
@@ -152,11 +160,11 @@ export async function createModel(input: {
     await db.transaction(async (tx) => {
       const [model] = await tx.insert(models).values({
         name, sku: text(input.sku, 60) || null, price: amount(input.price), cost: amount(input.cost),
-        imageUrl: imageUrl(input.imageUrl), isPublished: false,
+        imageUrl: imageUrl(input.imageUrl), galleryUrls: imageUrls(input.galleryUrls), isPublished: false,
       }).returning({ id: models.id })
       for (const color of colors) {
         const [createdColor] = await tx.insert(modelColors).values({
-          modelId: model.id, color: color.color, stock: color.stock, imageUrl: color.imageUrl,
+          modelId: model.id, color: color.color, stock: color.stock, imageUrl: color.imageUrl, galleryUrls: color.galleryUrls,
         }).returning({ id: modelColors.id })
         if (color.sizes.length) await tx.insert(modelSizes).values(color.sizes.map((s) => ({ modelColorId: createdColor.id, ...s })))
       }
@@ -300,6 +308,21 @@ export async function addModelColor(modelId: number, color: string, stock: numbe
 export async function updateModelColorImage(colorId: number, image: string | null) {
   return run(async () => {
     await db.update(modelColors).set({ imageUrl: imageUrl(image) }).where(eq(modelColors.id, id(colorId)))
+  })
+}
+
+
+export async function updateModelGallery(modelId: number, urls: string[]) {
+  return run(async () => {
+    const mid = id(modelId)
+    await db.update(models).set({ galleryUrls: imageUrls(urls) }).where(eq(models.id, mid))
+  })
+}
+
+export async function updateModelColorGallery(colorId: number, urls: string[]) {
+  return run(async () => {
+    const cid = id(colorId)
+    await db.update(modelColors).set({ galleryUrls: imageUrls(urls) }).where(eq(modelColors.id, cid))
   })
 }
 
