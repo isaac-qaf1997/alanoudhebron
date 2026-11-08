@@ -9,10 +9,10 @@ import { Panel } from '@/components/ui/panel'
 import { ImagePicker } from '@/components/inventory/image-picker'
 import { uploadInventoryImage } from '@/components/inventory/upload-image'
 
-type DraftColor = { key: number; color: string; stock: number; file: File | null }
+type DraftColor = { key: number; color: string; stock: number | null; sizes: string; file: File | null }
 
 let key = 0
-const newColor = (): DraftColor => ({ key: ++key, color: '', stock: 1, file: null })
+const newColor = (): DraftColor => ({ key: ++key, color: '', stock: 1, sizes: '', file: null })
 
 export function ModelForm() {
   const uid = useId()
@@ -30,9 +30,13 @@ export function ModelForm() {
         const [modelImageUrl, preparedColors] = await Promise.all([
           modelImage ? uploadInventoryImage(modelImage) : Promise.resolve(null),
           Promise.all(
-            colors.map(async ({ color, stock, file }) => ({
+            colors.map(async ({ color, stock, sizes, file }) => ({
               color,
               stock,
+              sizes: sizes.trim() ? sizes.split(',').map((entry) => {
+                const [size, quantity] = entry.trim().split(':')
+                return { size: size.trim(), stock: quantity === undefined || quantity.trim() === '' ? null : Number(quantity) }
+              }) : [],
               imageUrl: file ? await uploadInventoryImage(file) : null,
             })),
           ),
@@ -123,15 +127,12 @@ export function ModelForm() {
                   required
                 />
                 <Input
-                  aria-label={`كمية اللون ${index + 1}`}
+                  aria-label={`كمية اللون ${index + 1} (اتركيه فارغاً إذا لم تتابعي المخزون)`}
                   type="number"
                   min={0}
-                  value={c.stock}
-                  onChange={(e) =>
-                    setColors((list) =>
-                      list.map((x) => (x.key === c.key ? { ...x, stock: Math.max(0, Number(e.target.value) || 0) } : x)),
-                    )
-                  }
+                  placeholder="مخزون اختياري"
+                  value={c.stock ?? ''}
+                  onChange={(e) => setColors((list) => list.map((x) => x.key === c.key ? { ...x, stock: e.target.value === '' ? null : Math.max(0, Number(e.target.value) || 0) } : x))}
                 />
                 <Button
                   type="button"
@@ -144,6 +145,13 @@ export function ModelForm() {
                   <Trash2 className="size-4" />
                 </Button>
               </div>
+              <Input
+                aria-label={`مقاسات اللون ${index + 1}`}
+                placeholder="مقاسات اختيارية: S:2, M:4 أو S, M"
+                value={c.sizes}
+                onChange={(e) => setColors((list) => list.map((x) => x.key === c.key ? { ...x, sizes: e.target.value } : x))}
+              />
+              <p className="text-xs text-muted-foreground">اتركي المقاسات فارغة للون بدون مقاسات. اكتبي الكمية بعد النقطتين، أو اتركيها فارغة لمخزون غير متابع.</p>
               <ImagePicker
                 compact
                 title={`صورة لون ${c.color || index + 1} (اختياري)`}
