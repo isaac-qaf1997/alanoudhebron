@@ -7,6 +7,7 @@ import {
   deleteModel,
   deleteModelColor,
   setColorStock,
+  setModelPublished,
   updateModel,
   updateModelColorImage,
 } from '@/app/actions'
@@ -97,6 +98,14 @@ export function ModelCard({ model }: { model: ModelWithColors }) {
           </div>
           <div className="flex shrink-0 items-center gap-1">
             <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">{total} قطعة</span>
+            <Button
+              size="sm"
+              variant={model.isPublished ? "outline" : "default"}
+              disabled={pending}
+              onClick={() => act(() => setModelPublished(model.id, !model.isPublished))}
+            >
+              {model.isPublished ? 'إلغاء النشر' : 'نشر'}
+            </Button>
             <Button variant="ghost" size="icon-sm" onClick={() => setEditing(true)} aria-label={`تعديل ${model.name}`}>
               <Pencil className="size-4" />
             </Button>
