@@ -258,9 +258,14 @@ async function run() {
   }
 }
 
-export async function POST() {
-  const user = await authorizeRole('admin')
-  if (!user) return NextResponse.json({ ok: false, error: 'يلزم تسجيل دخول المدير.' }, { status: 401 })
+export async function POST(request: NextRequest) {
+  const secret = process.env.CRON_SECRET
+  const authorization = request.headers.get('authorization') || ''
+  const isScheduled = Boolean(secret && authorization === `Bearer ${secret}`)
+  if (!isScheduled) {
+    const user = await authorizeRole('admin')
+    if (!user) return NextResponse.json({ ok: false, error: 'يلزم تسجيل دخول المدير أو استدعاء مجدول موثّق.' }, { status: 401 })
+  }
   return run()
 }
 
