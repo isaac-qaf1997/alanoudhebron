@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { asc, desc, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { models, modelColors } from '@/lib/db/schema'
+import { models, modelColors, modelSizes } from '@/lib/db/schema'
 import { getCurrentUser } from '@/lib/auth/session'
 
 export const metadata = {
@@ -29,13 +29,14 @@ function BrandMark() {
 
 export default async function ShopPage() {
   const currentUser = await getCurrentUser()
-  const [products, colors] = await Promise.all([
+  const [products, colors, sizes] = await Promise.all([
     db.select({ id: models.id, name: models.name, price: models.price, imageUrl: models.imageUrl }).from(models).where(eq(models.isPublished, true)).orderBy(desc(models.createdAt)),
-    db.select({ modelId: modelColors.modelId, color: modelColors.color, stock: modelColors.stock, imageUrl: modelColors.imageUrl }).from(modelColors).orderBy(asc(modelColors.id)),
+    db.select().from(modelColors).orderBy(asc(modelColors.id)),
+    db.select().from(modelSizes).orderBy(asc(modelSizes.id)),
   ])
   const available = products.map((product) => {
-    const variants = colors.filter((color) => color.modelId === product.id && color.stock > 0)
-    return { ...product, imageUrl: variants.find((v) => v.imageUrl)?.imageUrl || product.imageUrl, variants, stock: variants.reduce((sum, v) => sum + v.stock, 0) }
+    const variants = colors.filter((color) => color.modelId === product.id).map((color) => ({ ...color, sizes: sizes.filter((s) => s.modelColorId === color.id) })).filter((color) => color.sizes.length ? color.sizes.some((s) => s.stock === null || s.stock > 0) : color.stock === null || color.stock > 0)
+    return { ...product, imageUrl: variants.find((v) => v.imageUrl)?.imageUrl || product.imageUrl, variants, stock: variants.reduce((sum, v) => sum + (v.sizes.length ? v.sizes.reduce((n, s) => n + (s.stock ?? 1), 0) : (v.stock ?? 1)), 0) }
   }).filter((product) => product.stock > 0)
 
   return (
