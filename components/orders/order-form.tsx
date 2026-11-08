@@ -178,8 +178,8 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
                   >
                     <option value="">اللون</option>
                     {model?.colors.map((c) => (
-                      <option key={c.id} value={c.color} disabled={c.stock <= 0}>
-                        {c.color} ({c.stock} متوفر)
+                      <option key={c.id} value={c.color} disabled={c.sizes.length ? false : c.stock !== null && c.stock <= 0}>
+                        {c.color} ({c.stock === null ? 'المخزون غير متابع' : c.stock + ' متوفر'})
                       </option>
                     ))}
                   </Select>
@@ -302,8 +302,8 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
                   >
                     <option value="">اللون</option>
                     {replacement?.colors.map((c) => (
-                      <option key={c.id} value={c.color} disabled={c.stock <= 0}>
-                        {c.color} ({c.stock} متوفر)
+                      <option key={c.id} value={c.color} disabled={c.stock !== null && c.stock <= 0}>
+                        {c.color} ({c.stock === null ? 'المخزون غير متابع' : c.stock + ' متوفر'})
                       </option>
                     ))}
                   </Select>
