@@ -88,11 +88,10 @@ async function resolveLocation(cityName: string, areaName: string, token: string
   const areas = await allRecords(`/api/resources/areas?city=${encodeURIComponent(idOf(city))}`, token)
   let area = areas.find(row => norm(label(row)) === norm(areaName))
 
-  // In order entry, "الخليل" is sometimes entered as both the city and the area.
-  // Only use a city-centre alias when Opost itself confirms that exact area exists
-  // under the selected city; never invent or guess an Opost area ID.
+  // If both city and area are entered as Hebron, accept only an exact
+  // city-centre label returned by Opost for that selected city.
   if (!area && norm(cityName) === norm('الخليل') && norm(areaName) === norm(cityName)) {
-    const confirmedHebronAliases = new Set(['مدينة الخليل', 'hebron city'])
+    const confirmedHebronAliases = new Set(['مدينة الخليل', 'الخليل المدينة', 'hebron city'])
     area = areas.find(row => confirmedHebronAliases.has(norm(label(row))))
   }
 
