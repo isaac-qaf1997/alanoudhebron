@@ -6,7 +6,8 @@ import { createOrder } from '@/app/actions'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select, Textarea } from '@/components/ui/field'
 import { Panel } from '@/components/ui/panel'
-import { CITIES, CITY_REGIONS, REGIONS, REGION_KEYS, type RegionKey } from '@/lib/constants'
+import { CITY_REGIONS, REGIONS, REGION_KEYS, type RegionKey } from '@/lib/constants'
+import { OpostLocationFields } from '@/components/shipping/opost-location-fields'
 import { formatMoney } from '@/lib/format'
 import type { ModelWithColors } from '@/lib/queries'
 
@@ -344,39 +345,26 @@ export function OrderForm({ models, couriers }: { models: Omit<ModelWithColors, 
               required
             />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="المدينة" htmlFor={`${uid}-city`}>
-              <Input
-                id={`${uid}-city`}
-                list={`${uid}-cities`}
-                value={customer.city}
-                onChange={(e) => onCityChange(e.target.value)}
-                required
-              />
-              <datalist id={`${uid}-cities`}>
-                {CITIES.map((c) => (
-                  <option key={c} value={c} />
-                ))}
-              </datalist>
-            </Field>
-            <Field label="المنطقة" htmlFor={`${uid}-region`}>
-              <Select
-                id={`${uid}-region`}
-                value={customer.region}
-                onChange={(e) => set('region', e.target.value as RegionKey)}
-                required
-              >
-                <option value="">اختاري المنطقة</option>
-                {REGION_KEYS.map((r) => (
-                  <option key={r} value={r}>
-                    {REGIONS[r].label} ({REGIONS[r].fee} ₪)
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <Field label="المنطقة / الحي" htmlFor={`${uid}-area`}>
-            <Input id={`${uid}-area`} value={customer.area} onChange={(e) => set('area', e.target.value)} required />
+          <OpostLocationFields
+            city={customer.city}
+            area={customer.area}
+            onCityChange={onCityChange}
+            onAreaChange={(value) => set('area', value)}
+          />
+          <Field label="منطقة التوصيل" htmlFor={`${uid}-region`}>
+            <Select
+              id={`${uid}-region`}
+              value={customer.region}
+              onChange={(e) => set('region', e.target.value as RegionKey)}
+              required
+            >
+              <option value="">اختاري المنطقة</option>
+              {REGION_KEYS.map((r) => (
+                <option key={r} value={r}>
+                  {REGIONS[r].label} ({REGIONS[r].fee} ₪)
+                </option>
+              ))}
+            </Select>
           </Field>
           <Field label="العنوان التفصيلي" htmlFor={`${uid}-address`}>
             <Input id={`${uid}-address`} value={customer.address} onChange={(e) => set('address', e.target.value)} />
