@@ -174,6 +174,13 @@ export async function saveColorSizes(colorId: number, sizes: { size: string; sto
     await db.transaction(async (tx) => {
       const [color] = await tx.select().from(modelColors).where(eq(modelColors.id, cid)).for('update')
       if (!color) throw new UserError('اللون غير موجود')
+      const existingSizes = await tx.select().from(modelSizes).where(eq(modelSizes.modelColorId, cid))
+      for (const oldSize of existingSizes) {
+        if (normalized.some((s) => s.size.toLowerCase() === oldSize.size.toLowerCase())) continue
+        const [usedItem] = await tx.select({ id: orderItems.id }).from(orderItems).where(sql`${orderItems.modelId} = ${color.modelId} AND ${orderItems.color} = ${color.color} AND ${orderItems.size} = ${oldSize.size}`).limit(1)
+        const [usedExchange] = await tx.select({ id: orderExchanges.id }).from(orderExchanges).where(sql`(${orderExchanges.returnedModelId} = ${color.modelId} AND ${orderExchanges.returnedColor} = ${color.color} AND ${orderExchanges.returnedSize} = ${oldSize.size}) OR (${orderExchanges.newModelId} = ${color.modelId} AND ${orderExchanges.newColor} = ${color.color} AND ${orderExchanges.newSize} = ${oldSize.size})`).limit(1)
+        if (usedItem || usedExchange) throw new UserError(`لا يمكن حذف مقاس ${oldSize.size} لأنه مرتبط بطلب سابق. اتركيه واجعلي مخزونه صفراً.`)
+      }
       await tx.delete(modelSizes).where(eq(modelSizes.modelColorId, cid))
       if (normalized.length) {
         await tx.insert(modelSizes).values(normalized.map((s) => ({ modelColorId: cid, ...s })))
@@ -384,6 +391,9 @@ async function adjustOrderStock(tx: Tx, orderId: number, direction: 1 | -1) {
     const [color] = await tx.select().from(modelColors).where(and(eq(modelColors.modelId, modelId), eq(modelColors.color, colorName))).limit(1)
     if (!color) throw new UserError('تعذر العثور على لون مرتبط بالطلب.')
     if (sizeName) {
+      const [size] = await tx.select().from(modelSizes).where(and(eq(modelSizes.modelColorId, color.id), eq(modelSizes.size, sizeName))).limit(1)
+      if (!size) throw new UserError(`المقاس ${sizeName} لم يعد موجوداً في سجل المخزون.`)
+      if (size.stock === null) return
       const key = `${color.id}\u0000${sizeName}`
       const current = sizeChanges.get(key)
       if (current) current.delta += delta
