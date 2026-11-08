@@ -53,6 +53,86 @@ export async function getModels() {
 
 export type ModelWithColors = Awaited<ReturnType<typeof getModels>>[number]
 
+export type StoreProduct = {
+  id: number
+  name: string
+  price: number
+  imageUrl: string | null
+  colors: {
+    id: number
+    color: string
+    stock: number | null
+    imageUrl: string | null
+    sizes: { id: number; size: string; stock: number | null }[]
+  }[]
+}
+
+// One joined query replaces three sequential database round trips on public storefront pages.
+export async function getStoreProducts(productId?: number): Promise<StoreProduct[]> {
+  const conditions = productId
+    ? and(eq(models.isPublished, true), eq(models.id, productId))
+    : eq(models.isPublished, true)
+
+  const rows = await db.select({
+    productId: models.id,
+    productName: models.name,
+    price: models.price,
+    imageUrl: models.imageUrl,
+    colorId: modelColors.id,
+    color: modelColors.color,
+    colorStock: modelColors.stock,
+    colorImageUrl: modelColors.imageUrl,
+    sizeId: modelSizes.id,
+    size: modelSizes.size,
+    sizeStock: modelSizes.stock,
+  }).from(models)
+    .leftJoin(modelColors, eq(modelColors.modelId, models.id))
+    .leftJoin(modelSizes, eq(modelSizes.modelColorId, modelColors.id))
+    .where(conditions)
+    .orderBy(desc(models.createdAt), asc(modelColors.id), asc(modelSizes.id))
+
+  const products = new Map<number, StoreProduct>()
+  const colors = new Map<number, StoreProduct['colors'][number]>()
+
+  for (const row of rows) {
+    let product = products.get(row.productId)
+    if (!product) {
+      product = {
+        id: row.productId,
+        name: row.productName,
+        price: row.price,
+        imageUrl: row.imageUrl,
+        colors: [],
+      }
+      products.set(row.productId, product)
+    }
+
+    if (row.colorId === null) continue
+    let color = colors.get(row.colorId)
+    if (!color) {
+      color = {
+        id: row.colorId,
+        color: row.color!,
+        stock: row.colorStock,
+        imageUrl: row.colorImageUrl,
+        sizes: [],
+      }
+      colors.set(row.colorId, color)
+      product.colors.push(color)
+    }
+
+    if (row.sizeId !== null) {
+      color.sizes.push({
+        id: row.sizeId,
+        size: row.size!,
+        stock: row.sizeStock,
+      })
+    }
+  }
+
+  return [...products.values()]
+}
+
 export async function getActiveCourierCount() {
   const [result] = await db.select({ count: sql<number>`count(*)::int` }).from(couriers).where(eq(couriers.active, true))
   return result?.count ?? 0
