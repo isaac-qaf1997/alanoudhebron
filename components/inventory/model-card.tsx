@@ -7,6 +7,7 @@ import {
   deleteModel,
   deleteModelColor,
   setColorStock,
+  saveColorSizes,
   setModelPublished,
   updateModel,
   updateModelColorImage,
@@ -26,7 +27,7 @@ export function ModelCard({ model }: { model: ModelWithColors }) {
   const [editing, setEditing] = useState(false)
   const [info, setInfo] = useState({ name: model.name, sku: model.sku ?? '', price: model.price, cost: model.cost })
   const [modelImageFile, setModelImageFile] = useState<File | null>(null)
-  const [newColor, setNewColor] = useState({ color: '', stock: 1, file: null as File | null })
+  const [newColor, setNewColor] = useState({ color: '', stock: null as number | null, file: null as File | null })
 
   const total = model.colors.reduce((s, c) => s + c.stock, 0)
 
@@ -128,9 +129,11 @@ export function ModelCard({ model }: { model: ModelWithColors }) {
             key={`${c.id}-${c.stock}`}
             color={c.color}
             stock={c.stock}
+            sizes={c.sizes}
             imageUrl={c.imageUrl}
             disabled={pending}
             onSave={(stock) => act(() => setColorStock(c.id, stock))}
+            onSaveSizes={(sizes) => act(() => saveColorSizes(c.id, sizes))}
             onSaveImage={async (file) => {
               const url = await uploadInventoryImage(file)
               const result = await updateModelColorImage(c.id, url)
@@ -150,7 +153,7 @@ export function ModelCard({ model }: { model: ModelWithColors }) {
               const imageUrl = newColor.file ? await uploadInventoryImage(newColor.file) : null
               return addModelColor(model.id, newColor.color, newColor.stock, imageUrl)
             },
-            () => setNewColor({ color: '', stock: 1, file: null }),
+            () => setNewColor({ color: '', stock: null, file: null }),
           )
         }}
       >
@@ -167,8 +170,9 @@ export function ModelCard({ model }: { model: ModelWithColors }) {
             aria-label="كمية اللون الجديد"
             type="number"
             min={0}
-            value={newColor.stock}
-            onChange={(e) => setNewColor((n) => ({ ...n, stock: Math.max(0, Number(e.target.value) || 0) }))}
+            value={newColor.stock ?? ''}
+            placeholder="بدون تتبع"
+            onChange={(e) => setNewColor((n) => ({ ...n, stock: e.target.value === '' ? null : Math.max(0, Number(e.target.value) || 0) }))}
             className="h-9"
           />
           <Button type="submit" variant="outline" size="icon" disabled={pending} aria-label="إضافة اللون">
@@ -194,25 +198,30 @@ export function ModelCard({ model }: { model: ModelWithColors }) {
 function ColorRow({
   color,
   stock,
+  sizes,
   imageUrl,
   disabled,
   onSave,
+  onSaveSizes,
   onSaveImage,
   onDelete,
 }: {
   color: string
-  stock: number
+  stock: number | null
+  sizes: { id: number; size: string; stock: number | null }[]
   imageUrl: string | null
   disabled: boolean
-  onSave: (stock: number) => void
+  onSave: (stock: number | null) => void
+  onSaveSizes: (sizes: { size: string; stock: number | null }[]) => void
   onSaveImage: (file: File) => Promise<void>
   onDelete: () => void
 }) {
-  const [value, setValue] = useState(stock)
+  const [value, setValue] = useState<number | null>(stock)
+  const [sizesValue, setSizesValue] = useState(sizes.map((s) => s.stock == null ? s.size : s.size + ':' + s.stock).join(', '))
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePending, setImagePending] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
-  const low = stock <= 2
+  const low = stock !== null && stock <= 2
 
   async function saveImage() {
     if (!imageFile) return
@@ -232,27 +241,25 @@ function ColorRow({
     <li className="flex flex-col gap-2 rounded-lg border border-border/60 p-2">
       <div className="flex items-center gap-2 text-sm">
         <span className="flex-1 truncate font-medium">{color}</span>
-        {low ? <span className="text-xs text-destructive">{stock === 0 ? 'نفد' : 'منخفض'}</span> : null}
-        <Input
-          aria-label={`كمية ${color}`}
-          type="number"
-          min={0}
-          value={value}
-          onChange={(e) => setValue(Math.max(0, Number(e.target.value) || 0))}
-          className={cn('h-8 w-20', low && 'border-destructive/50')}
-        />
-        <Button
-          size="icon-sm"
-          variant={value !== stock ? 'default' : 'ghost'}
-          disabled={disabled || value === stock}
-          onClick={() => onSave(value)}
-          aria-label={`حفظ كمية ${color}`}
-        >
-          <Check className="size-4" />
-        </Button>
+        {sizes.length ? <span className="text-xs text-muted-foreground">{sizes.length} مقاسات</span> : <>
+          {low ? <span className="text-xs text-destructive">{stock === 0 ? 'نفد' : 'منخفض'}</span> : null}
+          <Input aria-label={`كمية ${color}`} type="number" min={0} placeholder="غير متابع" value={value ?? ''} onChange={(e) => setValue(e.target.value === '' ? null : Math.max(0, Number(e.target.value) || 0))} className={cn('h-8 w-24', low && 'border-destructive/50')} />
+          <Button size="icon-sm" variant={value !== stock ? 'default' : 'ghost'} disabled={disabled || value === stock} onClick={() => onSave(value)} aria-label={`حفظ كمية ${color}`}><Check className="size-4" /></Button>
+        </>}
+
         <Button size="icon-sm" variant="ghost" onClick={onDelete} disabled={disabled} aria-label={`حذف اللون ${color}`}>
           <Trash2 className="size-4 text-muted-foreground" />
         </Button>
+      </div>
+      <div className="flex gap-2">
+        <Input aria-label={`مقاسات ${color}`} placeholder="مقاسات: S:2, M:4 أو S, M" value={sizesValue} onChange={(e) => setSizesValue(e.target.value)} className="h-8"/>
+        <Button size="sm" variant="outline" disabled={disabled} onClick={() => {
+          const parsed = sizesValue.trim() ? sizesValue.split(',').map((entry) => {
+            const [size, quantity] = entry.trim().split(':')
+            return { size: size.trim(), stock: quantity === undefined || quantity.trim() === '' ? null : Number(quantity) }
+          }) : []
+          onSaveSizes(parsed)
+        }}>حفظ المقاسات</Button>
       </div>
       <div className="flex flex-col gap-1">
         <ImagePicker compact title={`صورة ${color}`} imageUrl={imageUrl} file={imageFile} onFileChange={setImageFile} />
