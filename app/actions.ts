@@ -158,6 +158,22 @@ export async function createModel(input: {
   })
 }
 
+export async function setModelPublished(modelId: number, published: boolean) {
+  return run(async () => {
+    const mid = id(modelId)
+    if (typeof published !== 'boolean') throw new UserError('حالة النشر غير صالحة')
+    const [model] = await db.select({ id: models.id }).from(models).where(eq(models.id, mid)).limit(1)
+    if (!model) throw new UserError('الموديل غير موجود')
+    await db.update(models).set({ isPublished: published }).where(eq(models.id, mid))
+  })
+}
+
+export async function publishAllDrafts() {
+  return run(async () => {
+    await db.update(models).set({ isPublished: true }).where(eq(models.isPublished, false))
+  })
+}
+
 export async function updateModel(
   modelId: number,
   input: { name: string; sku?: string; price: number; cost: number; imageUrl?: string | null },
