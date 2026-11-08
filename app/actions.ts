@@ -177,9 +177,15 @@ export async function saveColorSizes(colorId: number, sizes: { size: string; sto
       const existingSizes = await tx.select().from(modelSizes).where(eq(modelSizes.modelColorId, cid))
       for (const oldSize of existingSizes) {
         if (normalized.some((s) => s.size.toLowerCase() === oldSize.size.toLowerCase())) continue
+        if ((oldSize.stock ?? 0) > 0) throw new UserError(`صفّري مخزون المقاس ${oldSize.size} قبل حذفه حتى لا تضيع الكمية.`)
         const [usedItem] = await tx.select({ id: orderItems.id }).from(orderItems).where(sql`${orderItems.modelId} = ${color.modelId} AND ${orderItems.color} = ${color.color} AND ${orderItems.size} = ${oldSize.size}`).limit(1)
         const [usedExchange] = await tx.select({ id: orderExchanges.id }).from(orderExchanges).where(sql`(${orderExchanges.returnedModelId} = ${color.modelId} AND ${orderExchanges.returnedColor} = ${color.color} AND ${orderExchanges.returnedSize} = ${oldSize.size}) OR (${orderExchanges.newModelId} = ${color.modelId} AND ${orderExchanges.newColor} = ${color.color} AND ${orderExchanges.newSize} = ${oldSize.size})`).limit(1)
         if (usedItem || usedExchange) throw new UserError(`لا يمكن حذف مقاس ${oldSize.size} لأنه مرتبط بطلب سابق. اتركيه واجعلي مخزونه صفراً.`)
+      }
+      if (normalized.length && color.stock !== null && color.stock > 0) {
+        if (normalized.some((s) => s.stock === null) || normalized.reduce((sum, s) => sum + (s.stock ?? 0), 0) !== color.stock) {
+          throw new UserError(`مخزون اللون الحالي ${color.stock} قطعة. وزّعي نفس الكمية على المقاسات قبل التحويل، أو صفّري المخزون أولاً.`)
+        }
       }
       await tx.delete(modelSizes).where(eq(modelSizes.modelColorId, cid))
       if (normalized.length) {
