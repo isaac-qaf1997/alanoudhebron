@@ -14,8 +14,6 @@ import {
   type CourierPublic,
 } from '@/lib/db/schema'
 
-const localDate = (column: PgColumn) => sql`(${column} at time zone 'Asia/Hebron')::date`
-
 export async function getModels() {
   const [modelRows, colorRows, sizeRows] = await Promise.all([
     db.select().from(models).orderBy(desc(models.createdAt)),
@@ -197,14 +195,14 @@ export async function getOrders() {
 
 export async function getOrdersInRange(from: string, to: string) {
   return selectOrders(
-    sql`${localDate(orders.createdAt)} between ${from}::date and ${to}::date`,
+    sql`${orders.createdAt} >= (${from}::date::timestamp AT TIME ZONE 'Asia/Hebron') AND ${orders.createdAt} < ((${to}::date + 1)::timestamp AT TIME ZONE 'Asia/Hebron')`,
   )
 }
 
 export async function getDeliverySheet(date: string, courierId: number | null) {
   const conditions: SQL[] = [
     isNotNull(orders.shippedAt) as SQL,
-    sql`${localDate(orders.shippedAt)} = ${date}::date`,
+    sql`${orders.shippedAt} >= (${date}::date::timestamp AT TIME ZONE 'Asia/Hebron') AND ${orders.shippedAt} < ((${date}::date + 1)::timestamp AT TIME ZONE 'Asia/Hebron')`,
   ]
   if (courierId) conditions.push(eq(orders.courierId, courierId))
   const rows = await selectOrders(and(...conditions))
