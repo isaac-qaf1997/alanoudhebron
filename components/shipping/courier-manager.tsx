@@ -18,6 +18,8 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
   const [form, setForm] = useState(empty)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [checkingOpost, setCheckingOpost] = useState(false)
+  const [opostCheck, setOpostCheck] = useState<{ ok: boolean; message: string } | null>(null)
 
   function edit(c: CourierPublic) {
     setEditingId(c.id)
@@ -48,6 +50,24 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
       if (result.ok) reset()
       else setError(result.error)
     })
+  }
+
+  async function checkOpostConnection() {
+    setCheckingOpost(true)
+    setOpostCheck(null)
+    try {
+      const response = await fetch('/api/admin/opost/connection-check', { method: 'GET', cache: 'no-store' })
+      const result = await response.json() as { ok?: boolean; message?: string; error?: string; citiesCount?: number; hebronAreasCount?: number }
+      if (!response.ok || !result.ok) {
+        setOpostCheck({ ok: false, message: result.error || 'تعذر إكمال فحص الاتصال.' })
+      } else {
+        setOpostCheck({ ok: true, message: `الاتصال ناجح — ${result.citiesCount} مدينة و${result.hebronAreasCount} منطقة في الخليل.` })
+      }
+    } catch {
+      setOpostCheck({ ok: false, message: 'تعذر الوصول إلى نقطة فحص Opost. حاولي مرة أخرى.' })
+    } finally {
+      setCheckingOpost(false)
+    }
   }
 
   function remove(c: CourierPublic) {
@@ -199,6 +219,17 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
                     </Button>
                   </div>
                 </div>
+                {c.integrationKey === 'opost' ? (
+                  <div className="flex flex-col items-start gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={checkOpostConnection} disabled={checkingOpost || !c.apiEnabled}>
+                      {checkingOpost ? 'جارٍ فحص الاتصال…' : 'فحص اتصال Opost'}
+                    </Button>
+                    {opostCheck ? (
+                      <p role="status" className={opostCheck.ok ? 'text-xs text-success' : 'text-xs text-destructive'}>{opostCheck.message}</p>
+                    ) : null}
+                    <p className="text-xs text-muted-foreground">فحص قراءة فقط؛ لا ينشئ شحنات ولا يرسل بيانات طلبات.</p>
+                  </div>
+                ) : null}
                 <dl className="grid grid-cols-2 gap-2 text-center text-xs sm:grid-cols-4">
                   {[
                     ['الضفة', c.feeWestBank],
