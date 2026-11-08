@@ -90,6 +90,7 @@ export function ModelCard({ model }: { model: ModelWithColors }) {
             ) : null}
             <div className="flex min-w-0 flex-col gap-1">
               <h3 className="font-semibold">{model.name}</h3>
+              <p className="text-xs text-muted-foreground">{model.isPublished ? 'منشور في المتجر' : 'مسودة — غير ظاهر للزبائن'}</p>
               <p className="text-xs text-muted-foreground">
                 {model.sku ? `${model.sku} · ` : ''}
                 سعر {formatMoney(model.price)} · تكلفة {formatMoney(model.cost)}
