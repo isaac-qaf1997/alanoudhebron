@@ -246,7 +246,7 @@ async function synchronize(token: string) {
   }
 }
 
-async function run(request: NextRequest) {
+async function run() {
   const token = process.env.OPOST_ACCESS_TOKEN
   if (!token) return NextResponse.json({ ok: false, error: 'رمز اتصال Opost غير مضبوط في هذه البيئة.' }, { status: 503 })
   try {
@@ -261,7 +261,7 @@ async function run(request: NextRequest) {
 export async function POST() {
   const user = await authorizeRole('admin')
   if (!user) return NextResponse.json({ ok: false, error: 'يلزم تسجيل دخول المدير.' }, { status: 401 })
-  return run(new NextRequest('https://internal.local/api/admin/opost/sync', { method: 'POST' }))
+  return run()
 }
 
 export async function GET(request: NextRequest) {
@@ -270,5 +270,5 @@ export async function GET(request: NextRequest) {
   if (!secret || supplied !== `Bearer ${secret}`) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 })
   }
-  return run(request)
+  return run()
 }
