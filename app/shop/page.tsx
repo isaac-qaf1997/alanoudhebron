@@ -48,13 +48,13 @@ export default async function ShopPage() {
 
   return (
     <main dir="rtl" className="min-h-dvh overflow-hidden bg-[#f8f5ef] text-[#29251f]">
-      <div className="border-b border-[#e9e0d2] bg-[#211d19] px-4 py-2 text-center text-[10px] tracking-wide text-[#e6d3ae] sm:text-xs">
+      <div className="border-b border-[#8f6a39] bg-[#100c09] px-4 py-2 text-center text-[10px] tracking-wide text-[#e6d3ae] sm:text-xs">
         العنود للزي الشرعي · الخليل <span className="mx-2 text-[#bd9b62]">✦</span> أناقة من روح التراث
       </div>
 
-      <header className="sticky top-0 z-30 border-b border-[#e9e1d5]/90 bg-[#fbf9f5]/95 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-[#8f6a39]/70 bg-[#17110d]/95 text-[#f1d8ae] backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-7">
-          <nav className="flex items-center gap-3 text-xs text-[#665b4c] sm:gap-6 sm:text-sm">
+          <nav className="flex items-center gap-3 text-xs text-[#e2c89e] sm:gap-6 sm:text-sm">
             <Link href="/shop" className="transition hover:text-[#a17b43]">الرئيسية</Link>
             <a href="#collections" className="hidden transition hover:text-[#a17b43] sm:inline">تشكيلاتنا</a>
             <a href="#products" className="transition hover:text-[#a17b43]">المنتجات</a>
@@ -64,96 +64,80 @@ export default async function ShopPage() {
           <Link href="/shop" aria-label="العنود للزي الشرعي" className="flex items-center gap-2.5">
             <Logo />
             <span className="leading-tight">
-              <span className="block text-base font-bold tracking-wide text-[#30271d] sm:text-xl">العنود</span>
-              <span className="mt-1 block text-[9px] font-semibold tracking-[.12em] text-[#a17b43] sm:text-[11px]">للزي الشرعي · الخليل</span>
+              <span className="block text-base font-bold tracking-wide text-[#f1d8ae] sm:text-xl">العنود</span>
+              <span className="mt-1 block text-[9px] font-semibold tracking-[.12em] text-[#c9a36b] sm:text-[11px]">للزي الشرعي · الخليل</span>
             </span>
           </Link>
 
           <div className="flex items-center gap-1.5 text-[#8c6a3d]">
-            <Link href="/cart" aria-label="السلة" className="rounded-full border border-[#e8dfd2] p-2.5 transition hover:bg-[#f1e9dc]">♡</Link>
-            <a href="https://wa.me/970569388780" aria-label="واتساب" className="hidden rounded-full bg-[#2b2924] px-4 py-2.5 text-xs font-semibold text-[#f7ead1] transition hover:bg-[#514332] sm:inline-flex">تواصلي معنا</a>
+            <Link href="/cart" aria-label="السلة" className="rounded-full border border-[#8f6a39] p-2.5 text-[#f1d8ae] transition hover:bg-[#3b2a19]">♡</Link>
+            <a href="https://wa.me/970569388780" aria-label="واتساب" className="hidden rounded-full bg-[#c99b5c] px-4 py-2.5 text-xs font-semibold text-[#21170e] transition hover:bg-[#e4c38e] sm:inline-flex">تواصلي معنا</a>
           </div>
         </div>
       </header>
 
-      <section className="mx-auto max-w-7xl px-3 pb-8 pt-4 sm:px-7 sm:pb-12 sm:pt-7">
-        <div className="overflow-hidden rounded-[1.6rem] border border-[#9f7b45]/50 bg-[#15120f] shadow-[0_24px_70px_rgba(25,17,8,.22)] sm:rounded-[2rem]">
-          <div className="relative isolate grid min-h-[430px] items-center md:min-h-[510px] md:grid-cols-[.9fr_1.1fr]">
-            <div className="absolute inset-0 -z-10 bg-cover bg-center opacity-40" style={{ backgroundImage: "linear-gradient(90deg, rgba(18,15,12,.96), rgba(18,15,12,.55)), url('https://commons.wikimedia.org/wiki/Special:FilePath/Ibrahimi_mosque_-Hebron.jpg?width=1920')" }} />
-            <div className="order-2 flex flex-col items-center px-5 py-8 text-center md:order-1 md:items-start md:px-10 md:text-right lg:px-14">
-              <p className="text-[10px] font-semibold tracking-[.3em] text-[#d7b77d] sm:text-xs">AL ANOUD · HEBRON</p>
-              <h1 className="mt-4 text-3xl font-semibold leading-[1.55] text-[#fff8eb] sm:text-4xl lg:text-5xl">العنود للزي الشرعي</h1>
-              <p className="mt-2 text-lg text-[#e8c990] sm:text-xl">أناقتكِ من تراثنا</p>
-              <p className="mt-4 max-w-md text-sm leading-8 text-[#e5d8c4] sm:text-base">تطريز فلسطيني أصيل، وتفاصيل صُنعت بحب في الخليل</p>
-              <a href="#products" className="mt-7 inline-flex min-h-12 items-center rounded-full border border-[#d9b778] bg-[#c7a36a] px-8 text-sm font-bold text-[#211a11] shadow-lg transition hover:bg-[#e0c18d]">تسوّقي الآن <span className="mr-2">←</span></a>
-              <div className="mt-6 flex items-center gap-3 text-xs text-[#e6d1aa]">
-                <span className="h-px w-8 bg-[#b99358]"/><span>الخليل · فلسطين</span><span className="h-px w-8 bg-[#b99358]"/>
-              </div>
+      <section className="relative mx-auto max-w-[1500px] overflow-hidden bg-[#100b08] px-2 pb-8 pt-3 text-[#f8e8c8] sm:px-5 sm:pt-5">
+        <div className="pointer-events-none absolute inset-0 opacity-25" style={{ backgroundImage: 'radial-gradient(ellipse at 12% 12%, #b88b4b 0, transparent 32%), radial-gradient(ellipse at 90% 85%, #9e6c32 0, transparent 28%)' }}/>
+        <div className="relative overflow-hidden rounded-[1.4rem] border border-[#bd9457]/70 bg-[#100d0b] shadow-[0_25px_80px_rgba(0,0,0,.45)] sm:rounded-[2rem]">
+          <div className="grid min-h-[620px] md:min-h-[690px] md:grid-cols-2">
+            <div className="relative order-2 min-h-[420px] overflow-hidden md:order-1 md:min-h-[690px]">
+              <PhotoTile cell={1} label="موديل شال أسود مطرز بالأحمر من أعمال العنود" className="absolute inset-0 h-full w-full bg-cover bg-[center_22%]"/>
+              <div className="absolute inset-0 bg-gradient-to-t from-[#100b08]/80 via-transparent to-[#100b08]/10 md:bg-gradient-to-r md:from-transparent md:via-transparent md:to-[#100b08]/20"/>
+              <div className="absolute bottom-5 left-5 rounded-full border border-[#e2c28d]/70 bg-[#17100bd9] px-5 py-2 text-xs tracking-wide text-[#f4dfb8] backdrop-blur-sm sm:bottom-8 sm:left-8">تطريز فلسطيني أصيل</div>
             </div>
-            <div className="order-1 flex items-center justify-center gap-3 px-4 pt-7 md:order-2 md:py-10">
-              <div className="relative w-[116px] overflow-hidden rounded-xl border border-[#d4b477]/70 shadow-2xl sm:w-[150px] md:w-[175px]">
-                <PhotoTile cell={0} label="لوغو العنود الأصلي" className="aspect-[.68] w-full bg-black"/>
-              </div>
-              <div className="hidden max-w-[220px] text-right text-[#f3e5cc] sm:block">
-                <p className="text-sm text-[#d7b77d]">من قلب الخليل</p>
-                <p className="mt-2 text-2xl font-semibold leading-relaxed">تراثٌ نعتزّ به، وأناقةٌ تشبهكِ</p>
-                <p className="mt-3 text-xs leading-6 text-[#c9b99f]">الحرم الإبراهيمي الشريف · الخليل</p>
+
+            <div className="relative order-1 flex min-h-[470px] flex-col items-center justify-center overflow-hidden px-5 py-9 text-center md:order-2 md:min-h-[690px] md:px-9 lg:px-14">
+              <div className="absolute inset-0 bg-cover bg-center opacity-45" style={{ backgroundImage: "linear-gradient(180deg, rgba(13,9,6,.3), rgba(13,9,6,.88)), url('https://commons.wikimedia.org/wiki/Special:FilePath/Ibrahimi_mosque_-Hebron.jpg')" }}/>
+              <div className="absolute inset-0 bg-gradient-to-b from-[#120d09]/20 via-[#120d09]/55 to-[#120d09]/95"/>
+              <div className="relative flex flex-col items-center">
+                <div className="mb-3 w-[118px] overflow-hidden rounded-2xl border border-[#d5ad6b]/80 bg-black shadow-[0_0_38px_rgba(205,163,94,.2)] sm:w-[140px]">
+                  <PhotoTile cell={0} label="لوغو العنود الأصلي" className="aspect-[.83] w-full bg-black"/>
+                </div>
+                <p className="text-[2rem] font-semibold tracking-wide text-[#f2d29a] sm:text-4xl" style={{ fontFamily: 'Georgia, serif' }}>Al Anoud</p>
+                <h1 className="mt-2 text-2xl font-bold text-[#f8e3bd] sm:text-3xl">العنود للزي الشرعي</h1>
+                <div className="mt-4 flex w-full max-w-sm items-center gap-3 text-[#d9b475]">
+                  <span className="h-px flex-1 bg-gradient-to-l from-transparent to-[#c69b5a]"/>
+                  <span className="text-lg">✥ ❖ ✥</span>
+                  <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[#c69b5a]"/>
+                </div>
+                <p className="mt-5 text-lg leading-relaxed text-[#f4dfbd] sm:text-xl">أناقتكِ من تراثنا ..<br/>وجمالكِ في تفاصيلنا</p>
+                <div className="mt-4 text-3xl text-[#d7b477]">♡</div>
               </div>
             </div>
           </div>
 
-          <div className="border-t border-[#80613a] bg-[#211b15] px-3 py-5 sm:px-6 sm:py-7">
-            <div className="mb-4 text-center">
-              <p className="text-[10px] tracking-[.25em] text-[#c9a66c]">OUR COLLECTIONS</p>
-              <h2 className="mt-1 text-lg font-semibold text-[#fff4e1] sm:text-xl">تشكيلات العنود</h2>
-            </div>
+          <div className="relative border-t border-[#c39a5d]/80 bg-[#15100d] px-3 pb-5 pt-6 sm:px-6 sm:pb-7">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-[#b58a4d]/10 to-transparent"/>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
               {[
-                { title: 'أثواب', cell: 1 },
-                { title: 'فستان تطريز', cell: 4 },
-                { title: 'أثواب بناتي', cell: 3 },
                 { title: 'عبايات', cell: 5 },
+                { title: 'أثواب بناتي', cell: 3 },
+                { title: 'فستان تطريز', cell: 4 },
+                { title: 'أثواب', cell: 1 },
               ].map((item) => (
-                <a key={item.title} href="#products" className="group overflow-hidden rounded-xl border border-[#b48b51]/60 bg-[#17130f]">
-                  <PhotoTile cell={item.cell} label={item.title} className="aspect-[4/5] w-full bg-cover bg-center transition duration-500 group-hover:scale-[1.03]"/>
-                  <div className="border-t border-[#8d6b3f]/50 px-2 py-3 text-center text-sm font-semibold text-[#f0d6a8]">{item.title}</div>
+                <a key={item.title} href="#products" className="group relative overflow-hidden rounded-t-[48%] rounded-b-xl border border-[#d0a66a]/80 bg-[#201710] shadow-[0_7px_22px_rgba(0,0,0,.35)]">
+                  <PhotoTile cell={item.cell} label={item.title} className="aspect-[.82] w-full bg-cover bg-center transition duration-500 group-hover:scale-[1.025]"/>
+                  <div className="relative mx-auto -mt-1 w-[90%] rounded-full border border-[#e6c58f] bg-gradient-to-b from-[#f2d8a7] to-[#c99c5d] px-2 py-2 text-center text-sm font-bold text-[#1c140c] shadow-lg sm:text-base">{item.title}</div>
                 </a>
               ))}
             </div>
           </div>
 
-          <div className="flex flex-col items-center justify-between gap-4 border-t border-[#80613a] bg-[#100e0c] px-4 py-5 sm:flex-row sm:px-7">
-            <div className="flex items-center gap-3 text-sm font-semibold text-[#f1d9ae]">
-              <span className="text-2xl text-[#d8b574]">♧</span>
+          <div className="relative border-t border-[#b88b50]/70 bg-[#100c09] px-4 pb-7 pt-5 text-center sm:px-8 sm:pt-7">
+            <div className="mx-auto flex max-w-2xl items-center justify-center gap-3 text-lg font-semibold text-[#f1d5a5] sm:text-xl">
+              <span className="text-3xl text-[#d9b77d]">♧</span>
               <span>الدفع عند الاستلام</span>
             </div>
-            <div className="flex items-center gap-3">
-              <a href="https://www.instagram.com/alanoudhebron/" target="_blank" rel="noreferrer" aria-label="إنستغرام" className="rounded-full border border-[#8f6e43] px-4 py-2 text-xs text-[#f2d9ac] transition hover:bg-[#30251a]">Instagram</a>
-              <a href="https://www.facebook.com/Alanoudhebron/" target="_blank" rel="noreferrer" aria-label="فيسبوك" className="rounded-full border border-[#8f6e43] px-4 py-2 text-xs text-[#f2d9ac] transition hover:bg-[#30251a]">Facebook</a>
-              <a href="https://wa.me/970569388780" target="_blank" rel="noreferrer" aria-label="واتساب" className="rounded-full border border-[#8f6e43] px-4 py-2 text-xs text-[#f2d9ac] transition hover:bg-[#30251a]">WhatsApp</a>
-            </div>
-          </div>
-        </div>
-        <p className="mt-2 text-center text-[10px] text-[#958675]">صورة الحرم الإبراهيمي: Madosophy Ahmad · Wikimedia Commons · CC BY-SA 4.0</p>
-      </section>
-
-      <section id="collections" className="mx-auto max-w-7xl px-4 py-8 sm:px-7 sm:py-12">
-        <div className="mb-6 flex items-end justify-between">
-          <div><p className="text-[10px] font-semibold tracking-[.22em] text-[#a17b48]">OUR COLLECTIONS</p><h2 className="mt-2 text-xl font-semibold text-[#30271e] sm:text-2xl">تصفّحي حسب ذوقكِ</h2></div>
-          <span className="text-xs text-[#978a78]">أناقة لكل يوم ومناسبة</span>
-        </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-          {[
-            { title: 'الأثواب الفلسطينية', note: 'أصالة وتفاصيل تحكي', cell: 2 },
-            { title: 'العبايات', note: 'أناقة هادئة ومميزة', cell: 5 },
-            { title: 'فساتين التطريز', note: 'لمسات تليق بمناسباتكِ', cell: 4 },
-            { title: 'التطريز التراثي', note: 'حكاية من أرضنا', cell: 1 },
-          ].map((item) => (
-            <a key={item.title} href="#products" className="group overflow-hidden rounded-2xl border border-[#e9e0d4] bg-white transition hover:-translate-y-1 hover:shadow-xl hover:shadow-[#6d5637]/10">
-              <PhotoTile cell={item.cell} label={item.title} className="aspect-[4/4.6] w-full bg-cover bg-center transition duration-700 group-hover:scale-[1.025]"/>
-              <div className="relative bg-white px-3 py-4 text-center sm:px-4"><h3 className="text-sm font-semibold text-[#383027]">{item.title}</h3><p className="mt-1 text-[11px] text-[#9a8b77]">{item.note}</p></div>
+            <a href="#products" className="mx-auto mt-6 inline-flex min-h-14 items-center justify-center gap-3 rounded-full border-2 border-[#f1d29b] bg-gradient-to-b from-[#f5dfb6] to-[#c99b5c] px-10 text-lg font-bold text-[#1c140c] shadow-[0_5px_0_#8e642f,0_12px_28px_rgba(0,0,0,.35)] transition hover:-translate-y-0.5 sm:text-xl">
+              <span>تسوّقي الآن</span><span className="text-2xl">🛒</span>
             </a>
-          ))}
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+              <a href="https://www.instagram.com/alanoudhebron/" target="_blank" rel="noreferrer" aria-label="إنستغرام" className="flex min-w-[135px] items-center justify-center gap-2 rounded-xl border border-[#d1aa70] px-4 py-2.5 text-xs text-[#f4dfbd] transition hover:bg-[#3b2a19]"><span className="text-xl">◎</span><span><span className="block text-[9px]">تابعونا على</span><span className="font-semibold">Instagram</span></span></a>
+              <a href="https://www.facebook.com/Alanoudhebron/" target="_blank" rel="noreferrer" aria-label="فيسبوك" className="flex min-w-[135px] items-center justify-center gap-2 rounded-xl border border-[#d1aa70] px-4 py-2.5 text-xs text-[#f4dfbd] transition hover:bg-[#3b2a19]"><span className="text-2xl font-bold">f</span><span><span className="block text-[9px]">تابعونا على</span><span className="font-semibold">Facebook</span></span></a>
+              <a href="https://wa.me/970569388780" target="_blank" rel="noreferrer" aria-label="واتساب" className="flex min-w-[135px] items-center justify-center gap-2 rounded-xl border border-[#d1aa70] px-4 py-2.5 text-xs text-[#f4dfbd] transition hover:bg-[#3b2a19]"><span className="text-xl">◉</span><span><span className="block text-[9px]">تواصلوا معنا</span><span className="font-semibold">WhatsApp</span></span></a>
+            </div>
+            <div className="pointer-events-none absolute bottom-0 left-0 h-2 w-full bg-gradient-to-r from-transparent via-[#c39a5d] to-transparent opacity-70"/>
+          </div>
         </div>
       </section>
 
