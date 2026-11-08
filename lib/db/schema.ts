@@ -109,7 +109,12 @@ export const orders = pgTable('orders', {
   syncError: text('sync_error'),
   lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, (table) => ({ checkoutRequestUnique: uniqueIndex('orders_checkout_request_key_uq').on(table.checkoutRequestKey).where(sql`${table.checkoutRequestKey} IS NOT NULL`) }))
+}, (table) => ({
+  checkoutRequestUnique: uniqueIndex('orders_checkout_request_key_uq').on(table.checkoutRequestKey).where(sql`${table.checkoutRequestKey} IS NOT NULL`),
+  createdAtIndex: index('orders_created_at_idx').on(table.createdAt),
+  shippedAtIndex: index('orders_shipped_at_idx').on(table.shippedAt),
+  courierShippedAtIndex: index('orders_courier_shipped_at_idx').on(table.courierId, table.shippedAt),
+}))
 
 export const coupons = pgTable('coupons', {
   id: serial('id').primaryKey(),
@@ -138,7 +143,7 @@ export const orderItems = pgTable('order_items', {
   quantity: integer('quantity').notNull(),
   unitPrice: money('unit_price').notNull(),
   unitCost: money('unit_cost').notNull().default(0),
-})
+}, (table) => ({ orderIdIndex: index('order_items_order_id_idx').on(table.orderId) }))
 
 export const orderExchanges = pgTable('order_exchanges', {
   id: serial('id').primaryKey(),
@@ -158,7 +163,7 @@ export const orderExchanges = pgTable('order_exchanges', {
   newPrice: money('new_price').notNull(),
   newCost: money('new_cost').notNull().default(0),
   diff: money('diff').notNull(),
-})
+}, (table) => ({ orderIdIndex: index('order_exchanges_order_id_idx').on(table.orderId) }))
 
 export const shippingWebhookEvents = pgTable(
   'shipping_webhook_events',
