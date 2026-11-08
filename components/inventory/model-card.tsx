@@ -29,7 +29,7 @@ export function ModelCard({ model }: { model: ModelWithColors }) {
   const [modelImageFile, setModelImageFile] = useState<File | null>(null)
   const [newColor, setNewColor] = useState({ color: '', stock: null as number | null, file: null as File | null })
 
-  const total = model.colors.reduce((s, c) => s + c.stock, 0)
+  const total = model.colors.reduce((s, color) => s + (color.sizes.length ? color.sizes.reduce((n, size) => n + (size.stock ?? 0), 0) : (color.stock ?? 0)), 0)
 
   function act(fn: () => Promise<ActionResult>, onDone?: () => void) {
     setError(null)
