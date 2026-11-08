@@ -19,7 +19,7 @@ const modelImages: Record<number, string> = {
   1: 'https://res.cloudinary.com/genxurzp/image/upload/v1794062248/alanoud/inventory/image_83fd64b8-73f5-480d-a29f-12b12e35f2ad.jpg',
   2: 'https://res.cloudinary.com/genxurzp/image/upload/v1794179205/alanoud/inventory/image_a251fbcc-36f7-4779-a9f2-19fb2641076e.webp',
   3: 'https://res.cloudinary.com/genxurzp/image/upload/v1794179072/alanoud/inventory/image_7a846c8a-2c20-4a21-8bce-2843d704e4f4.webp',
-  4: 'https://res.cloudinary.com/genxurzp/image/upload/v1794178894/alanoud/inventory/image_8b7a9fd2-4a24-4b62-a075-5b7bb07b327c.webp',
+  4: 'https://res.cloudinary.com/genxurzp/image/upload/v1794180954/alanoud/inventory/image_3f57d616-da2c-447a-ba58-2537da38432a.webp',
 }
 
 function PhotoTile({ cell, className = '', label }: { cell: number; className?: string; label: string }) {
@@ -28,8 +28,8 @@ function PhotoTile({ cell, className = '', label }: { cell: number; className?: 
 
 function Logo() {
   return (
-    <div aria-label="شعار العنود للزي الشرعي" role="img" className="flex h-[70px] w-[60px] shrink-0 items-center justify-center rounded-xl border border-[#c5a46d] bg-[#120d09] shadow-[0_5px_20px_rgba(40,30,18,.25)] sm:h-[82px] sm:w-[70px]">
-      <span className="font-serif text-3xl text-[#d8b477]">ع</span>
+    <div aria-label="شعار العنود للزي الشرعي" role="img" className="flex h-[70px] w-[60px] shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#c5a46d] bg-[#120d09] shadow-[0_5px_20px_rgba(40,30,18,.25)] sm:h-[82px] sm:w-[70px]">
+      <img src="https://res.cloudinary.com/genxurzp/image/upload/v1794181046/alanoud/inventory/image_ee910985-ebde-4d84-b448-11a4b3d04e76.webp" alt="شعار العنود" className="h-full w-full object-contain p-1" />
     </div>
   )
 }
@@ -96,7 +96,7 @@ export default async function ShopPage() {
               <div className="absolute inset-0 bg-cover bg-center opacity-45" style={{ backgroundImage: "linear-gradient(180deg, rgba(13,9,6,.3), rgba(13,9,6,.88)), url('https://commons.wikimedia.org/wiki/Special:FilePath/Ibrahimi_mosque_-Hebron.jpg')" }}/>
               <div className="absolute inset-0 bg-gradient-to-b from-[#120d09]/20 via-[#120d09]/55 to-[#120d09]/95"/>
               <div className="relative flex flex-col items-center">
-                <div className="mb-3 flex h-[118px] w-[118px] items-center justify-center rounded-2xl border border-[#d5ad6b]/80 bg-[#100b08] shadow-[0_0_38px_rgba(205,163,94,.2)] sm:h-[140px] sm:w-[140px]"><span className="font-serif text-7xl text-[#d8b477]">ع</span></div>
+                <div className="mb-3 flex h-[118px] w-[118px] items-center justify-center overflow-hidden rounded-2xl border border-[#d5ad6b]/80 bg-[#100b08] shadow-[0_0_38px_rgba(205,163,94,.2)] sm:h-[140px] sm:w-[140px]"><img src="https://res.cloudinary.com/genxurzp/image/upload/v1794181046/alanoud/inventory/image_ee910985-ebde-4d84-b448-11a4b3d04e76.webp" alt="شعار العنود" className="h-full w-full object-contain p-2" /></div>
                 <p className="text-[2rem] font-semibold tracking-wide text-[#f2d29a] sm:text-4xl" style={{ fontFamily: 'Georgia, serif' }}>Al Anoud</p>
                 <h1 className="mt-2 text-2xl font-bold text-[#f8e3bd] sm:text-3xl">العنود للزي الشرعي</h1>
                 <div className="mt-4 flex w-full max-w-sm items-center gap-3 text-[#d9b475]">
