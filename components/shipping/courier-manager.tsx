@@ -57,11 +57,16 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
     setOpostCheck(null)
     try {
       const response = await fetch('/api/admin/opost/connection-check', { method: 'GET', cache: 'no-store' })
-      const result = await response.json() as { ok?: boolean; message?: string; error?: string; citiesCount?: number; hebronAreasCount?: number }
+      const result = await response.json() as { ok?: boolean; message?: string; error?: string; citiesCount?: number; hebronAreasCount?: number; hebronCityAreaAlias?: string | null; hebronAreaSuggestions?: string[] }
       if (!response.ok || !result.ok) {
         setOpostCheck({ ok: false, message: result.error || 'تعذر إكمال فحص الاتصال.' })
       } else {
-        setOpostCheck({ ok: true, message: `الاتصال ناجح — ${result.citiesCount} مدينة و${result.hebronAreasCount} منطقة في الخليل.` })
+        setOpostCheck({
+          ok: true,
+          message: result.hebronCityAreaAlias
+            ? `الاتصال ناجح — ${result.citiesCount} مدينة و${result.hebronAreasCount} منطقة. تم العثور على منطقة المدينة في Opost باسم: ${result.hebronCityAreaAlias}.`
+            : `الاتصال ناجح — ${result.citiesCount} مدينة و${result.hebronAreasCount} منطقة. لم يظهر اسم "مدينة الخليل" كمنطقة مستقلة.${result.hebronAreaSuggestions?.length ? ` المناطق القريبة: ${result.hebronAreaSuggestions.join('، ')}.` : ''}`,
+        })
       }
     } catch {
       setOpostCheck({ ok: false, message: 'تعذر الوصول إلى نقطة فحص Opost. حاولي مرة أخرى.' })
