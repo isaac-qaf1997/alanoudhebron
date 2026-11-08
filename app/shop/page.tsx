@@ -87,7 +87,7 @@ export default async function ShopPage() {
         <div className="relative overflow-hidden rounded-[1.4rem] border border-[#bd9457]/70 bg-[#100d0b] shadow-[0_25px_80px_rgba(0,0,0,.45)] sm:rounded-[2rem]">
           <div className="grid min-h-[620px] md:min-h-[690px] md:grid-cols-2">
             <div className="relative order-2 min-h-[420px] overflow-hidden md:order-1 md:min-h-[690px]">
-              <PhotoTile cell={1} label="الموديل 001 من متجر العنود" className="absolute inset-0 h-full w-full bg-cover bg-[center_22%]"/>
+              <PhotoTile cell={0} label="الموديل 001 من متجر العنود" className="absolute inset-0 h-full w-full bg-cover bg-[center_22%]"/>
               <div className="absolute inset-0 bg-gradient-to-t from-[#100b08]/80 via-transparent to-[#100b08]/10 md:bg-gradient-to-r md:from-transparent md:via-transparent md:to-[#100b08]/20"/>
               <div className="absolute bottom-5 left-5 rounded-full border border-[#e2c28d]/70 bg-[#17100bd9] px-5 py-2 text-xs tracking-wide text-[#f4dfb8] backdrop-blur-sm sm:bottom-8 sm:left-8">تطريز فلسطيني أصيل</div>
             </div>
@@ -97,7 +97,7 @@ export default async function ShopPage() {
               <div className="absolute inset-0 bg-gradient-to-b from-[#120d09]/20 via-[#120d09]/55 to-[#120d09]/95"/>
               <div className="relative flex flex-col items-center">
                 <div className="mb-3 w-[118px] overflow-hidden rounded-2xl border border-[#d5ad6b]/80 bg-black shadow-[0_0_38px_rgba(205,163,94,.2)] sm:w-[140px]">
-                  <PhotoTile cell={0} label="شعار العنود" className="aspect-[.83] w-full bg-black"/>
+                  <PhotoTile cell={0} label="الموديل 001" className="aspect-[.83] w-full bg-black"/>
                 </div>
                 <p className="text-[2rem] font-semibold tracking-wide text-[#f2d29a] sm:text-4xl" style={{ fontFamily: 'Georgia, serif' }}>Al Anoud</p>
                 <h1 className="mt-2 text-2xl font-bold text-[#f8e3bd] sm:text-3xl">العنود للزي الشرعي</h1>
@@ -116,10 +116,10 @@ export default async function ShopPage() {
             <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-[#b58a4d]/10 to-transparent"/>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
               {[
-                { title: 'عبايات', cell: 5 },
+                { title: 'عبايات', cell: 2 },
                 { title: 'أثواب بناتي', cell: 3 },
-                { title: 'فستان تطريز', cell: 4 },
-                { title: 'أثواب', cell: 1 },
+                { title: 'أثواب', cell: 4 },
+                { title: 'فستان تطريز', cell: 1 },
               ].map((item) => (
                 <a key={item.title} href="#products" className="group relative overflow-hidden rounded-t-[48%] rounded-b-xl border border-[#d0a66a]/80 bg-[#201710] shadow-[0_7px_22px_rgba(0,0,0,.35)]">
                   <PhotoTile cell={item.cell} label={item.title} className="aspect-[.82] w-full bg-cover bg-center transition duration-500 group-hover:scale-[1.025]"/>
