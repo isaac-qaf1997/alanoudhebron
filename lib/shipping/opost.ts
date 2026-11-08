@@ -61,10 +61,14 @@ async function allRecords(path: string, token: string): Promise<ApiRecord[]> {
   return collected
 }
 function label(row: ApiRecord): string {
-  return String(row.name ?? row.title ?? row.label ?? row.ar_name ?? row.name_ar ?? '').trim()
+  return String(
+    row.name ?? row.title ?? row.label ?? row.ar_name ?? row.name_ar ??
+    row.area_name ?? row.areaName ?? row.name_arabic ?? row.arabic_name ??
+    row.name_en ?? row.english_name ?? row.area ?? ''
+  ).trim()
 }
 function idOf(row: ApiRecord): string {
-  return String(row.id ?? row.value ?? '').trim()
+  return String(row.id ?? row.value ?? row.area_id ?? row.areaId ?? '').trim()
 }
 function norm(value: string): string {
   return value.normalize('NFKC').toLowerCase().replace(/[\u064B-\u065F\u0670]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/[\s_-]+/g, ' ').trim()
@@ -82,8 +86,24 @@ async function resolveLocation(cityName: string, areaName: string, token: string
   const city = cities.find(row => norm(label(row)) === norm(cityName))
   if (!city || !idOf(city)) throw new Error(`لم أتمكن من مطابقة مدينة "${cityName}" في قائمة Opost. راجعي اسم المدينة.`)
   const areas = await allRecords(`/api/resources/areas?city=${encodeURIComponent(idOf(city))}`, token)
-  const area = areas.find(row => norm(label(row)) === norm(areaName))
-  if (!area || !idOf(area)) throw new Error(`منطقة "${areaName}" غير موجودة ضمن مدينة "${cityName}" في Opost. لن نرسل عنواناً غير مؤكد.`)
+  let area = areas.find(row => norm(label(row)) === norm(areaName))
+
+  // In order entry, "الخليل" is sometimes entered as both the city and the area.
+  // Only use a city-centre alias when Opost itself confirms that exact area exists
+  // under the selected city; never invent or guess an Opost area ID.
+  if (!area && norm(cityName) === norm('الخليل') && norm(areaName) === norm(cityName)) {
+    const confirmedHebronAliases = new Set(['مدينة الخليل', 'hebron city'])
+    area = areas.find(row => confirmedHebronAliases.has(norm(label(row))))
+  }
+
+  if (!area || !idOf(area)) {
+    const suggestions = areas
+      .map(row => label(row))
+      .filter(name => name && (norm(name).includes(norm('خليل')) || norm(name).includes('hebron')))
+      .slice(0, 8)
+    const suffix = suggestions.length ? ` المناطق المسجلة المشابهة: ${suggestions.join('، ')}.` : ''
+    throw new Error(`منطقة "${areaName}" غير موجودة ضمن مدينة "${cityName}" في Opost.${suffix} لن نرسل عنواناً غير مؤكد.`)
+  }
   return { cityId: idOf(city), areaId: idOf(area) }
 }
 
