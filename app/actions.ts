@@ -465,6 +465,7 @@ export async function createOrder(input: OrderInput) {
       // Keep transaction queries sequential on the same PostgreSQL client.
       const modelRows = await tx.select().from(models).where(inArray(models.id, modelIds))
       const colorRows = await tx.select().from(modelColors).where(inArray(modelColors.modelId, modelIds)).for('update')
+      const sizeRows = await tx.select().from(modelSizes).where(inArray(modelSizes.modelColorId, colorRows.map((c) => c.id))).for('update')
       const courierRows = courierId ? await tx.select().from(couriers).where(eq(couriers.id, courierId)) : []
       if (courierId && courierRows.length === 0) throw new UserError('شركة التوصيل غير موجودة')
       shouldAutoDispatch = Boolean(courierRows[0]?.active && courierRows[0]?.apiEnabled && courierRows[0]?.sendOnOrderCreate)
@@ -474,77 +475,77 @@ export async function createOrder(input: OrderInput) {
         if (!model) throw new UserError('أحد الموديلات غير موجود')
         return model
       }
-      const getColor = (mid: number, color: string, required: boolean) => {
-        const row = colorRows.find((c) => c.modelId === mid && c.color === color)
-        if (!row && required) throw new UserError(`اللون "${color || '—'}" غير متوفر لموديل ${getModel(mid).name}`)
-        return row
+      const getVariant = (mid: number, colorName: string, sizeName: string | null, required: boolean) => {
+        const color = colorRows.find((c) => c.modelId === mid && c.color === colorName)
+        if (!color && required) throw new UserError(`اللون "${colorName || '—'}" غير متوفر لموديل ${getModel(mid).name}`)
+        if (!color) return null
+        const sizes = sizeRows.filter((s) => s.modelColorId === color.id)
+        if (sizes.length && !sizeName) throw new UserError(`اختاري المقاس للون ${color.color} من ${getModel(mid).name}`)
+        if (!sizes.length && sizeName) throw new UserError(`هذا اللون لا يحتوي على مقاسات: ${getModel(mid).name} — ${color.color}`)
+        const size = sizeName ? sizes.find((s) => s.size === sizeName) : null
+        if (sizeName && !size) throw new UserError('المقاس المحدد غير موجود لهذا اللون')
+        return { color, size }
       }
 
-      const stockNeeded = new Map<number, number>()
-      const need = (colorId: number, delta: number) =>
-        stockNeeded.set(colorId, (stockNeeded.get(colorId) ?? 0) + delta)
+      const stockNeeds = new Map<string, { kind: 'color' | 'size'; id: number; needed: number }>()
+      const addNeed = (variant: NonNullable<ReturnType<typeof getVariant>>, delta: number) => {
+        if (variant.size) {
+          if (variant.size.stock === null) return
+          const key = `s:${variant.size.id}`
+          const current = stockNeeds.get(key)
+          stockNeeds.set(key, { kind: 'size', id: variant.size.id, needed: (current?.needed ?? 0) + delta })
+        } else if (variant.color.stock !== null) {
+          const key = `c:${variant.color.id}`
+          const current = stockNeeds.get(key)
+          stockNeeds.set(key, { kind: 'color', id: variant.color.id, needed: (current?.needed ?? 0) + delta })
+        }
+      }
 
       let itemsTotal = 0
       let costTotal = 0
-
       const itemRows = items.map((item) => {
         const model = getModel(item.modelId)
-        const color = getColor(item.modelId, item.color, true)!
-        need(color.id, item.quantity)
+        const variant = getVariant(item.modelId, item.color, item.size, true)!
+        addNeed(variant, item.quantity)
         itemsTotal += model.price * item.quantity
         costTotal += model.cost * item.quantity
-        return {
-          modelId: model.id,
-          modelName: model.name,
-          color: item.color,
-          quantity: item.quantity,
-          unitPrice: model.price,
-          unitCost: model.cost,
-        }
+        return { modelId: model.id, modelName: model.name, color: item.color, size: item.size, quantity: item.quantity, unitPrice: model.price, unitCost: model.cost }
       })
 
       let exchangeDiff = 0
       const exchangeRows = exchanges.map((ex) => {
         const returned = getModel(ex.returnedModelId)
         const replacement = getModel(ex.newModelId)
-        const newColor = getColor(ex.newModelId, ex.newColor, true)!
-        need(newColor.id, ex.newQty)
-        const returnedColor = getColor(ex.returnedModelId, ex.returnedColor, true)!
-        need(returnedColor.id, -ex.returnedQty)
+        const newVariant = getVariant(ex.newModelId, ex.newColor, ex.newSize, true)!
+        addNeed(newVariant, ex.newQty)
+        const returnedVariant = getVariant(ex.returnedModelId, ex.returnedColor, ex.returnedSize, true)!
+        addNeed(returnedVariant, -ex.returnedQty)
         const diff = replacement.price * ex.newQty - returned.price * ex.returnedQty
         exchangeDiff += diff
         costTotal += replacement.cost * ex.newQty - returned.cost * ex.returnedQty
         return {
-          returnedModelId: returned.id,
-          returnedName: returned.name,
-          returnedColor: ex.returnedColor || null,
-          returnedQty: ex.returnedQty,
-          returnedPrice: returned.price,
-          returnedCost: returned.cost,
-          newModelId: replacement.id,
-          newName: replacement.name,
-          newColor: ex.newColor,
-          newQty: ex.newQty,
-          newPrice: replacement.price,
-          newCost: replacement.cost,
-          diff,
+          returnedModelId: returned.id, returnedName: returned.name, returnedColor: ex.returnedColor || null,
+          returnedSize: ex.returnedSize, returnedQty: ex.returnedQty, returnedPrice: returned.price, returnedCost: returned.cost,
+          newModelId: replacement.id, newName: replacement.name, newColor: ex.newColor, newSize: ex.newSize,
+          newQty: ex.newQty, newPrice: replacement.price, newCost: replacement.cost, diff,
         }
       })
 
-      for (const [colorId, needed] of stockNeeded) {
-        const row = colorRows.find((c) => c.id === colorId)!
-        if (needed > 0 && row.stock < needed) {
-          const model = getModel(row.modelId)
-          throw new UserError(`المخزون غير كافٍ: ${model.name} (${row.color}) — المتوفر ${row.stock}`)
+      for (const need of stockNeeds.values()) {
+        if (need.needed <= 0) continue
+        const row = need.kind === 'size' ? sizeRows.find((s) => s.id === need.id)! : colorRows.find((c) => c.id === need.id)!
+        if ((row.stock ?? 0) < need.needed) {
+          const model = getModel(need.kind === 'size' ? colorRows.find((c) => c.id === (row as typeof sizeRows[number] && sizeRows.find((s) => s.id === need.id)?.modelColorId))?.modelId ?? 0 : (row as typeof colorRows[number]).modelId)
+          throw new UserError(`المخزون غير كافٍ: ${model.name} — المتوفر ${row.stock ?? 0}`)
         }
       }
-
-      for (const [colorId, needed] of stockNeeded) {
-        if (needed === 0) continue
-        await tx
-          .update(modelColors)
-          .set({ stock: sql`${modelColors.stock} - ${needed}` })
-          .where(eq(modelColors.id, colorId))
+      for (const need of stockNeeds.values()) {
+        if (!need.needed) continue
+        if (need.kind === 'size') {
+          await tx.update(modelSizes).set({ stock: sql`${modelSizes.stock} - ${need.needed}` }).where(eq(modelSizes.id, need.id))
+        } else {
+          await tx.update(modelColors).set({ stock: sql`${modelColors.stock} - ${need.needed}` }).where(eq(modelColors.id, need.id))
+        }
       }
 
       const shippingFee = REGIONS[region].fee
