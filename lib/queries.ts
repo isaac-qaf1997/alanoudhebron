@@ -39,10 +39,12 @@ export async function getModels() {
     price: model.price,
     cost: model.cost,
     imageUrl: model.imageUrl,
+    galleryUrls: model.galleryUrls ?? [],
     isPublished: model.isPublished,
     createdAt: model.createdAt,
     colors: (colorsByModel.get(model.id) ?? []).map((color) => ({
       ...color,
+      galleryUrls: color.galleryUrls ?? [],
       sizes: sizesByColor.get(color.id) ?? [],
     })),
   }))
@@ -55,11 +57,13 @@ export type StoreProduct = {
   name: string
   price: number
   imageUrl: string | null
+  galleryUrls: string[]
   colors: {
     id: number
     color: string
     stock: number | null
     imageUrl: string | null
+    galleryUrls: string[]
     sizes: { id: number; size: string; stock: number | null }[]
   }[]
 }
@@ -79,6 +83,8 @@ export async function getStoreProducts(productId?: number): Promise<StoreProduct
     color: modelColors.color,
     colorStock: modelColors.stock,
     colorImageUrl: modelColors.imageUrl,
+    colorGalleryUrls: modelColors.galleryUrls,
+    modelGalleryUrls: models.galleryUrls,
     sizeId: modelSizes.id,
     size: modelSizes.size,
     sizeStock: modelSizes.stock,
@@ -99,6 +105,7 @@ export async function getStoreProducts(productId?: number): Promise<StoreProduct
         name: row.productName,
         price: row.price,
         imageUrl: row.imageUrl,
+        galleryUrls: row.modelGalleryUrls ?? [],
         colors: [],
       }
       products.set(row.productId, product)
@@ -112,6 +119,7 @@ export async function getStoreProducts(productId?: number): Promise<StoreProduct
         color: row.color!,
         stock: row.colorStock,
         imageUrl: row.colorImageUrl,
+        galleryUrls: row.colorGalleryUrls ?? [],
         sizes: [],
       }
       colors.set(row.colorId, color)
