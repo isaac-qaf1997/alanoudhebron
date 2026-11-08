@@ -16,14 +16,15 @@ const socialLinks = [
 
 function BrandMark() {
   return (
-    <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-[#c6a36d] bg-[#211d18] text-[#d9bd8b] shadow-[0_0_0_4px_rgba(198,163,109,.12)]" aria-hidden="true">
-      <svg viewBox="0 0 48 48" className="h-8 w-8" fill="none">
-        <path d="M24 4 29 15 40 10 35 21 46 24 35 29 40 40 29 35 24 46 19 35 8 40 13 29 2 24 13 19 8 8 19 13 24 4Z" stroke="currentColor" strokeWidth="1.2"/>
-        <path d="M24 13 29 19 35 24 29 29 24 35 19 29 13 24 19 19 24 13Z" stroke="currentColor" strokeWidth="1.2"/>
-        <circle cx="24" cy="24" r="3" fill="currentColor"/>
-      </svg>
+    <span className="mx-auto block h-20 w-20 overflow-hidden rounded-full border border-[#c6a36d] bg-black shadow-[0_0_0_5px_rgba(198,163,109,.16)] sm:h-24 sm:w-24" aria-label="شعار العنود">
+      <span className="block h-full w-full" style={{ backgroundImage: "url('/alanoud-storefront-grid.webp')", backgroundSize: "300% 200%", backgroundPosition: "0% 0%" }} />
     </span>
   )
+}
+
+function SpritePhoto({ cell, className = "", label }: { cell: number; className?: string; label: string }) {
+  const positions = ["0% 0%", "50% 0%", "100% 0%", "0% 100%", "50% 100%", "100% 100%"]
+  return <div role="img" aria-label={label} className={className} style={{ backgroundImage: "url('/alanoud-storefront-grid.webp')", backgroundSize: "300% 200%", backgroundPosition: positions[cell] }} />
 }
 
 export default async function ShopPage() {
@@ -56,8 +57,10 @@ export default async function ShopPage() {
             {currentUser?.role === 'admin' ? <Link href="/admin" className="transition hover:text-[#9b7745]">لوحة الإدارة</Link> : null}
           </nav>
           <Link href="/shop" aria-label="العنود للزي شرعي - الصفحة الرئيسية" className="text-center">
-            <span className="block text-xl font-bold tracking-wide text-[#211d18] sm:text-2xl">العنود</span>
-            <span className="mt-0.5 block text-[10px] font-semibold tracking-[0.12em] text-[#9a774b] sm:text-xs">للزي شرعي</span>
+            <span className="flex items-center justify-center gap-2">
+              <span className="h-10 w-10 overflow-hidden rounded-full border border-[#c6a36d] bg-black sm:h-12 sm:w-12"><span className="block h-full w-full" style={{ backgroundImage: "url('/alanoud-storefront-grid.webp')", backgroundSize: "300% 200%", backgroundPosition: "0% 0%" }} /></span>
+              <span><span className="block text-xl font-bold tracking-wide text-[#211d18] sm:text-2xl">العنود</span><span className="mt-0.5 block text-[10px] font-semibold tracking-[0.12em] text-[#9a774b] sm:text-xs">للزي شرعي · الخليل</span></span>
+            </span>
           </Link>
           <div className="flex items-center justify-end gap-1 text-[#8a6841] sm:gap-2">
             {socialLinks.map(({ href, label, mark }) => <a key={label} href={href} target="_blank" rel="noreferrer" aria-label={label} title={label} className="rounded-full p-2 transition hover:bg-[#eee4d5]"><span className="text-sm font-bold">{mark}</span></a>)}
@@ -77,22 +80,26 @@ export default async function ShopPage() {
             <div className="mt-7 flex flex-wrap justify-center gap-3 text-xs text-[#d7c6aa] md:justify-start sm:text-sm"><span>أثواب فلسطينية</span><span>✦</span><span>تطريز تراثي</span><span>✦</span><span>عبايات</span></div>
           </div>
           <div className="relative flex min-h-[270px] items-center justify-center overflow-hidden border-t border-[#c7a36b]/20 bg-[radial-gradient(ellipse_at_center,rgba(173,135,79,.22),transparent_65%)] md:min-h-full md:border-r md:border-t-0">
-            {available[0]?.imageUrl ? <img src={available[0].imageUrl} alt="من تشكيلات العنود" className="absolute inset-0 h-full w-full object-cover opacity-35" /> : null}
+            <SpritePhoto cell={1} label="شال أسود مطرّز بالأحمر من أعمال العنود" className="absolute inset-0 h-full w-full bg-cover bg-center opacity-95" />
             <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-[#211d18]/80 via-[#211d18]/25 to-[#211d18]/40" />
             <div aria-hidden="true" className="absolute inset-5 rounded-[48%] border border-[#c7a36b]/30 md:inset-10"/>
             <div aria-hidden="true" className="absolute inset-10 rounded-[48%] border border-dashed border-[#c7a36b]/25 md:inset-16"/>
-            <svg viewBox="0 0 360 390" className="relative h-[290px] w-full max-w-[360px] sm:h-[350px]" fill="none" role="img" aria-label="زخرفة مستوحاة من التطريز الفلسطيني">
-              <path d="M180 25 202 70 250 50 230 98 278 120 230 142 250 190 202 170 180 215 158 170 110 190 130 142 82 120 130 98 110 50 158 70 180 25Z" stroke="#c9aa73" strokeWidth="2" opacity=".8"/>
-              <path d="M180 65 198 100 235 120 198 140 180 175 162 140 125 120 162 100 180 65Z" stroke="#e1c99e" strokeWidth="1.5"/>
-              <path d="M180 105 195 120 180 135 165 120 180 105Z" fill="#c9aa73"/>
-              <path d="M95 230 115 250 95 270 75 250 95 230ZM265 230 285 250 265 270 245 250 265 230Z" stroke="#c9aa73" strokeWidth="2"/>
-              <path d="M180 225V340M125 250H235M145 285H215M160 315H200" stroke="#c9aa73" strokeWidth="1.5" opacity=".65"/>
-              <path d="M180 235 205 260 180 285 155 260 180 235Z" stroke="#e1c99e" strokeWidth="2"/>
-              <path d="M180 285 200 305 180 325 160 305 180 285Z" stroke="#e1c99e" strokeWidth="2"/>
-              <circle cx="180" cy="120" r="55" stroke="#c9aa73" strokeDasharray="3 7" opacity=".6"/>
-            </svg>
+            <div className="relative z-10 flex h-[290px] w-full max-w-[360px] items-end justify-center pb-5 sm:h-[350px]">
+              <span className="rounded-full border border-[#d7b77e]/70 bg-[#211d18]/75 px-5 py-2 text-sm font-semibold text-[#f1dfbd] backdrop-blur">تفاصيل من تراثنا الفلسطيني</span>
+            </div>
             <span className="absolute bottom-5 text-[10px] tracking-[.28em] text-[#c9aa73]">PALESTINIAN HERITAGE · HEBRON</span>
           </div>
+        </div>
+      </section>
+
+      <section aria-label="من أعمال العنود" className="mx-auto max-w-7xl px-4 pt-10 sm:px-6 sm:pt-14">
+        <div className="mb-5 text-center"><p className="text-xs font-semibold tracking-[.18em] text-[#9a774b]">من أعمالنا</p><h2 className="mt-2 text-xl font-bold text-[#30291f] sm:text-2xl">تطريز يحكي حكاية</h2></div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="col-span-2 row-span-2 overflow-hidden rounded-2xl border border-[#d8c4a3] bg-[#e8dfd2] shadow-sm"><SpritePhoto cell={1} label="شال أسود بتطريز أحمر" className="aspect-[4/5] h-full w-full bg-cover bg-center transition duration-500 hover:scale-[1.03]" /></div>
+          <div className="overflow-hidden rounded-2xl border border-[#e4d8c7] bg-white"><SpritePhoto cell={2} label="ثوب فلسطيني مطرز للأطفال" className="aspect-[3/4] w-full bg-cover bg-center" /><p className="p-2 text-center text-xs font-semibold text-[#514536]">أثواب فلسطينية</p></div>
+          <div className="overflow-hidden rounded-2xl border border-[#e4d8c7] bg-white"><SpritePhoto cell={3} label="شال أسود مطرز بالأحمر" className="aspect-[3/4] w-full bg-cover bg-center" /><p className="p-2 text-center text-xs font-semibold text-[#514536]">تطريز تراثي</p></div>
+          <div className="overflow-hidden rounded-2xl border border-[#e4d8c7] bg-white"><SpritePhoto cell={4} label="فستان أسود بتطريز بنفسجي" className="aspect-[3/4] w-full bg-cover bg-center" /><p className="p-2 text-center text-xs font-semibold text-[#514536]">فساتين مطرزة</p></div>
+          <div className="overflow-hidden rounded-2xl border border-[#e4d8c7] bg-white"><SpritePhoto cell={5} label="عباية كحلية مطرزة" className="aspect-[3/4] w-full bg-cover bg-center" /><p className="p-2 text-center text-xs font-semibold text-[#514536]">عبايات</p></div>
         </div>
       </section>
 
