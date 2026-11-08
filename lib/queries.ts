@@ -5,6 +5,7 @@ import {
   couriers,
   coupons,
   modelColors,
+  modelSizes,
   models,
   orderExchanges,
   orderItems,
@@ -16,9 +17,10 @@ import {
 const localDate = (column: PgColumn) => sql`(${column} at time zone 'Asia/Hebron')::date`
 
 export async function getModels() {
-  const [modelRows, colorRows] = await Promise.all([
+  const [modelRows, colorRows, sizeRows] = await Promise.all([
     db.select().from(models).orderBy(desc(models.createdAt)),
     db.select().from(modelColors).orderBy(asc(modelColors.id)),
+    db.select().from(modelSizes).orderBy(asc(modelSizes.id)),
   ])
   return modelRows.map((model) => ({
     id: model.id,
@@ -29,7 +31,10 @@ export async function getModels() {
     imageUrl: model.imageUrl,
     isPublished: model.isPublished,
     createdAt: model.createdAt,
-    colors: colorRows.filter((c) => c.modelId === model.id),
+    colors: colorRows.filter((c) => c.modelId === model.id).map((color) => ({
+      ...color,
+      sizes: sizeRows.filter((size) => size.modelColorId === color.id),
+    })),
   }))
 }
 
