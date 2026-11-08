@@ -1,7 +1,7 @@
 'use client'
 
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-react'
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import {
   addModelColor,
   deleteModel,
@@ -126,7 +126,7 @@ export function ModelCard({ model }: { model: ModelWithColors }) {
       <ul className="flex flex-col gap-3">
         {model.colors.map((c) => (
           <ColorRow
-            key={`${c.id}-${c.stock}`}
+            key={c.id}
             color={c.color}
             stock={c.stock}
             sizes={c.sizes}
@@ -228,6 +228,12 @@ function ColorRow({
   const [imagePending, setImagePending] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
   const low = stock !== null && stock <= 2
+
+  useEffect(() => {
+    setValue(stock)
+    setSizeRows(sizes.map((size) => ({ key: size.id, size: size.size, stock: size.stock })))
+  }, [stock, sizes])
+
   const total = sizeRows.reduce((sum, size) => sum + (size.stock ?? 0), 0)
   const hasUntracked = sizeRows.some((size) => size.stock === null)
 
