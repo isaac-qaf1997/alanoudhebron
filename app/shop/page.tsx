@@ -23,7 +23,7 @@ function PhotoTile({ cell, className = '', label }: { cell: number; className?: 
 
 function Logo() {
   return (
-    <div aria-label="شعار العنود للزي الشرعي" role="img" className="h-16 w-16 shrink-0 rounded-full border border-[#c5a46d] bg-black shadow-[0_5px_20px_rgba(40,30,18,.13)] sm:h-[76px] sm:w-[76px]" style={{ backgroundImage: `url(${collageImage})`, backgroundSize: '300% 200%', backgroundPosition: '0% 0%' }} />
+    <div aria-label="شعار العنود للزي الشرعي" role="img" className="h-[70px] w-[60px] shrink-0 rounded-xl border border-[#c5a46d] bg-black shadow-[0_5px_20px_rgba(40,30,18,.13)] sm:h-[82px] sm:w-[70px]" style={{ backgroundImage: `url(${collageImage})`, backgroundSize: '300% 200%', backgroundPosition: '0% 0%' }} />
   )
 }
 
