@@ -10,17 +10,18 @@ import { ImagePicker } from '@/components/inventory/image-picker'
 import { uploadInventoryImage } from '@/components/inventory/upload-image'
 
 type DraftSize = { key: number; size: string; stock: number | null }
-type DraftColor = { key: number; color: string; stock: number | null; sizes: DraftSize[]; file: File | null }
+type DraftColor = { key: number; color: string; stock: number | null; sizes: DraftSize[]; file: File | null; galleryFiles: File[] }
 let colorKey = 0
 let sizeKey = 0
 const newSize = (): DraftSize => ({ key: ++sizeKey, size: '', stock: 0 })
-const newColor = (): DraftColor => ({ key: ++colorKey, color: '', stock: 1, sizes: [], file: null })
+const newColor = (): DraftColor => ({ key: ++colorKey, color: '', stock: 1, sizes: [], file: null, galleryFiles: [] })
 
 export function ModelForm() {
   const uid = useId()
   const [pending, startTransition] = useTransition()
   const [form, setForm] = useState({ name: '', sku: '', price: '', cost: '' })
   const [modelImage, setModelImage] = useState<File | null>(null)
+  const [modelGalleryFiles, setModelGalleryFiles] = useState<File[]>([])
   const [colors, setColors] = useState<DraftColor[]>(() => [newColor()])
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
 
@@ -44,20 +45,22 @@ export function ModelForm() {
       try {
         const [modelImageUrl, preparedColors] = await Promise.all([
           modelImage ? uploadInventoryImage(modelImage) : Promise.resolve(null),
-          Promise.all(colors.map(async ({ color, stock, sizes, file }) => ({
+          Promise.all(colors.map(async ({ color, stock, sizes, file, galleryFiles }) => ({
             color,
             stock: sizes.length ? null : stock,
             sizes: sizes.filter((entry) => entry.size.trim()).map(({ size, stock: quantity }) => ({ size: size.trim(), stock: quantity })),
             imageUrl: file ? await uploadInventoryImage(file) : null,
+            galleryUrls: await Promise.all(galleryFiles.map(uploadInventoryImage)),
           }))),
         ])
         const result = await createModel({
           name: form.name, sku: form.sku, price: Number(form.price || 0), cost: Number(form.cost || 0),
-          imageUrl: modelImageUrl, colors: preparedColors,
+          imageUrl: modelImageUrl, galleryUrls: await Promise.all(modelGalleryFiles.map(uploadInventoryImage)), colors: preparedColors,
         })
         if (result.ok) {
           setForm({ name: '', sku: '', price: '', cost: '' })
           setModelImage(null)
+          setModelGalleryFiles([])
           setColors([newColor()])
           setMessage({ type: 'success', text: 'تمت إضافة الموديل وصوره بنجاح. سيبقى مسودة حتى تنشريه.' })
         } else setMessage({ type: 'error', text: result.error })
@@ -85,6 +88,11 @@ export function ModelForm() {
           </Field>
         </div>
         <ImagePicker title="صورة الموديل الرئيسية (اختياري)" file={modelImage} onFileChange={setModelImage} />
+        <label className="flex flex-col gap-1 text-sm font-medium">صور إضافية للموديل (اختياري)
+          <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => setModelGalleryFiles((current) => [...current, ...Array.from(e.target.files ?? [])].slice(0, 20))} className="block w-full text-xs" />
+          <span className="text-xs font-normal text-muted-foreground">{modelGalleryFiles.length} صورة مختارة</span>
+          {modelGalleryFiles.length ? <button type="button" className="w-fit text-xs text-destructive underline" onClick={() => setModelGalleryFiles([])}>إزالة الصور المختارة</button> : null}
+        </label>
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-1 text-sm font-medium">الألوان والمخزون</legend>
           {colors.map((color, index) => {
@@ -116,7 +124,12 @@ export function ModelForm() {
                   <Button type="button" size="sm" variant="outline" onClick={() => updateColor(color.key, (c) => ({ ...c, stock: null, sizes: [...c.sizes, newSize()] }))}><Plus className="size-4" /> إضافة مقاس</Button>
                   {color.sizes.length ? <Button type="button" size="sm" variant="ghost" onClick={() => updateColor(color.key, (c) => ({ ...c, sizes: [] }))}>إلغاء المقاسات</Button> : null}
                 </div>
-                <ImagePicker compact title={`صورة لون ${color.color || index + 1} (اختياري)`} file={color.file} onFileChange={(file) => updateColor(color.key, (c) => ({ ...c, file }))} />
+                <ImagePicker compact title={`الصورة الرئيسية للون ${color.color || index + 1} (اختياري)`} file={color.file} onFileChange={(file) => updateColor(color.key, (c) => ({ ...c, file }))} />
+                <label className="flex flex-col gap-1 text-xs font-medium">صور إضافية لهذا اللون (اختياري)
+                  <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => updateColor(color.key, (c) => ({ ...c, galleryFiles: [...c.galleryFiles, ...Array.from(e.target.files ?? [])].slice(0, 20) }))} />
+                  <span className="font-normal text-muted-foreground">{color.galleryFiles.length} صورة مختارة</span>
+                  {color.galleryFiles.length ? <button type="button" className="w-fit text-destructive underline" onClick={() => updateColor(color.key, (c) => ({ ...c, galleryFiles: [] }))}>إزالة الصور المختارة</button> : null}
+                </label>
               </div>
             )
           })}
