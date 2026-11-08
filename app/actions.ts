@@ -327,10 +327,9 @@ export type OrderInput = {
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
 async function adjustOrderStock(tx: Tx, orderId: number, direction: 1 | -1) {
-  const [items, exchanges] = await Promise.all([
-    tx.select().from(orderItems).where(eq(orderItems.orderId, orderId)),
-    tx.select().from(orderExchanges).where(eq(orderExchanges.orderId, orderId)),
-  ])
+  // A transaction uses one PostgreSQL client; do not queue concurrent queries on it.
+  const items = await tx.select().from(orderItems).where(eq(orderItems.orderId, orderId))
+  const exchanges = await tx.select().from(orderExchanges).where(eq(orderExchanges.orderId, orderId))
   const changes = new Map<string, { modelId: number; color: string; delta: number }>()
   const add = (modelId: number | null, color: string | null, delta: number) => {
     if (!modelId) return
@@ -410,11 +409,10 @@ export async function createOrder(input: OrderInput) {
           ...exchanges.flatMap((e) => [e.returnedModelId, e.newModelId]),
         ]),
       ]
-      const [modelRows, colorRows, courierRows] = await Promise.all([
-        tx.select().from(models).where(inArray(models.id, modelIds)),
-        tx.select().from(modelColors).where(inArray(modelColors.modelId, modelIds)).for('update'),
-        courierId ? tx.select().from(couriers).where(eq(couriers.id, courierId)) : Promise.resolve([]),
-      ])
+      // Keep transaction queries sequential on the same PostgreSQL client.
+      const modelRows = await tx.select().from(models).where(inArray(models.id, modelIds))
+      const colorRows = await tx.select().from(modelColors).where(inArray(modelColors.modelId, modelIds)).for('update')
+      const courierRows = courierId ? await tx.select().from(couriers).where(eq(couriers.id, courierId)) : []
       if (courierId && courierRows.length === 0) throw new UserError('شركة التوصيل غير موجودة')
       shouldAutoDispatch = Boolean(courierRows[0]?.active && courierRows[0]?.apiEnabled && courierRows[0]?.sendOnOrderCreate)
 
