@@ -23,8 +23,8 @@ const modelImages: Record<number, string> = {
   4: 'https://res.cloudinary.com/genxurzp/image/upload/v1794180954/alanoud/inventory/image_3f57d616-da2c-447a-ba58-2537da38432a.webp',
 }
 
-function PhotoTile({ cell, className = '', label }: { cell: number; className?: string; label: string }) {
-  return <img src={modelImages[cell]} alt={label} className={className + ' object-contain'} loading="eager" decoding="async" />
+function PhotoTile({ cell, className = '', label, loading = 'lazy', width = 640 }: { cell: number; className?: string; label: string; loading?: 'eager' | 'lazy'; width?: number }) {
+  return <img src={cloudinaryImageUrl(modelImages[cell], width) ?? modelImages[cell]} alt={label} className={className + ' object-contain'} loading={loading} decoding="async" />
 }
 
 function Logo() {
@@ -89,7 +89,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
         <div className="relative overflow-hidden rounded-[1.4rem] border border-[#bd9457]/70 bg-[#100d0b] shadow-[0_25px_80px_rgba(0,0,0,.45)] sm:rounded-[2rem]">
           <div className="grid min-h-[620px] md:min-h-[690px] md:grid-cols-2">
             <div className="relative order-2 min-h-[420px] overflow-hidden md:order-1 md:min-h-[690px]">
-              <PhotoTile cell={0} label="الموديل 001 من متجر العنود" className="absolute inset-0 h-full w-full bg-cover bg-[center_22%]"/>
+              <PhotoTile cell={0} label="الموديل 001 من متجر العنود" loading="eager" width={1200} className="absolute inset-0 h-full w-full bg-cover bg-[center_22%]"/>
               <div className="absolute inset-0 bg-gradient-to-t from-[#100b08]/80 via-transparent to-[#100b08]/10 md:bg-gradient-to-r md:from-transparent md:via-transparent md:to-[#100b08]/20"/>
               <div className="absolute bottom-5 left-5 rounded-full border border-[#e2c28d]/70 bg-[#17100bd9] px-5 py-2 text-xs tracking-wide text-[#f4dfb8] backdrop-blur-sm sm:bottom-8 sm:left-8">تطريز فلسطيني أصيل</div>
             </div>
@@ -122,7 +122,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
                 { title: 'فستان تطريز', cell: 1 },
               ].map((item) => (
                 <Link key={item.title} href={`/shop?category=${encodeURIComponent(item.title)}`} className="group relative overflow-hidden rounded-t-[48%] rounded-b-xl border border-[#d0a66a]/80 bg-[#201710] shadow-[0_7px_22px_rgba(0,0,0,.35)]">
-                  <PhotoTile cell={item.cell} label={item.title} className="aspect-[.82] w-full bg-cover bg-center transition duration-500 group-hover:scale-[1.025]"/>
+                  <PhotoTile cell={item.cell} label={item.title} loading="lazy" width={520} className="aspect-[.82] w-full bg-cover bg-center transition duration-500 group-hover:scale-[1.025]"/>
                   <div className="relative mx-auto -mt-1 w-[90%] rounded-full border border-[#e6c58f] bg-gradient-to-b from-[#f2d8a7] to-[#c99c5d] px-2 py-2 text-center text-sm font-bold text-[#1c140c] shadow-lg sm:text-base">{item.title}</div>
                 </Link>
               ))}
