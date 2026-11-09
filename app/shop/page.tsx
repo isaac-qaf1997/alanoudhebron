@@ -35,7 +35,7 @@ function Logo() {
   )
 }
 
-export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
+export default async function ShopPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const params = await searchParams
   const [userResult, productsResult] = await Promise.allSettled([getCurrentUser(), getStoreProducts()])
   const currentUser = userResult.status === 'fulfilled' ? userResult.value : null
@@ -153,7 +153,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
           <div><p className="text-[10px] font-semibold tracking-[.22em] text-[#a17b48]">THE LATEST</p><h2 className="mt-2 text-2xl font-semibold text-[#f1d8ae]">تشكيلة العنود</h2></div>
           <span className="text-xs text-[#c7aa7d]">{available.length} منتج</span>
         </div>
-        <ProductGrid products={available.map(({ id, name, category, price, imageUrl, variants }) => ({ id, name, category, price, imageUrl, variants: variants.map((variant) => ({ color: variant.color })) }))} initialCategory={params.category || ''} />
+        <ProductGrid products={available.map(({ id, name, category, price, imageUrl, variants }) => ({ id, name, category, price, imageUrl, variants: variants.map((variant) => ({ color: variant.color })) }))} initialCategory={typeof params.category === 'string' ? params.category : ''} />
       </section>
 
       <footer className="mt-8 bg-[#211d19] px-5 py-10 text-center text-sm text-[#e1d2b8]">
