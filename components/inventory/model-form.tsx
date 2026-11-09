@@ -20,7 +20,7 @@ const newColor = (): DraftColor => ({ key: ++colorKey, color: '', stock: 1, size
 export function ModelForm() {
   const uid = useId()
   const [pending, startTransition] = useTransition()
-  const [form, setForm] = useState({ name: '', category: 'غير مصنف', sku: '', price: '', cost: '' })
+  const [form, setForm] = useState({ name: '', category: 'تشكيلات أخرى', sku: '', price: '', cost: '' })
   const [modelImage, setModelImage] = useState<File | null>(null)
   const [modelGalleryFiles, setModelGalleryFiles] = useState<File[]>([])
   const [colors, setColors] = useState<DraftColor[]>(() => [newColor()])
@@ -59,7 +59,7 @@ export function ModelForm() {
           imageUrl: modelImageUrl, galleryUrls: await Promise.all(modelGalleryFiles.map(uploadInventoryImage)), colors: preparedColors,
         })
         if (result.ok) {
-          setForm({ name: '', category: 'غير مصنف', sku: '', price: '', cost: '' })
+          setForm({ name: '', category: 'تشكيلات أخرى', sku: '', price: '', cost: '' })
           setModelImage(null)
           setModelGalleryFiles([])
           setColors([newColor()])
