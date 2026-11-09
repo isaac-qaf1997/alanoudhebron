@@ -4,6 +4,7 @@ import { and, eq, inArray, or, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { authorizeRole, type CurrentUser } from '@/lib/auth/session'
 import { db } from '@/lib/db'
+import { isProductCategory } from '@/lib/categories'
 import {
   couriers,
   coupons,
@@ -132,6 +133,7 @@ export async function setCouponActive(couponId: number, active: boolean) {
 
 export async function createModel(input: {
   name: string
+  category?: string
   sku?: string
   price: number
   cost: number
@@ -142,6 +144,7 @@ export async function createModel(input: {
   return run(async () => {
     const name = text(input.name)
     if (!name) throw new UserError('اسم الموديل مطلوب')
+    const category = isProductCategory(input.category) ? input.category : 'غير مصنف'
     const colors = (input.colors ?? []).map((c) => ({
       color: text(c.color, 60),
       stock: c.sizes?.length ? null : (c.stock == null ? null : qty(c.stock, true)),
@@ -159,7 +162,7 @@ export async function createModel(input: {
     }
     await db.transaction(async (tx) => {
       const [model] = await tx.insert(models).values({
-        name, sku: text(input.sku, 60) || null, price: amount(input.price), cost: amount(input.cost),
+        name, category, sku: text(input.sku, 60) || null, price: amount(input.price), cost: amount(input.cost),
         imageUrl: imageUrl(input.imageUrl), galleryUrls: imageUrls(input.galleryUrls), isPublished: false,
       }).returning({ id: models.id })
       for (const color of colors) {
@@ -260,7 +263,7 @@ export async function publishAllDrafts() {
 
 export async function updateModel(
   modelId: number,
-  input: { name: string; sku?: string; price: number; cost: number; imageUrl?: string | null },
+  input: { name: string; category?: string; sku?: string; price: number; cost: number; imageUrl?: string | null },
 ) {
   return run(async () => {
     const name = text(input.name)
@@ -269,6 +272,7 @@ export async function updateModel(
       .update(models)
       .set({
         name,
+        category: isProductCategory(input.category) ? input.category : 'غير مصنف',
         sku: text(input.sku, 60) || null,
         price: amount(input.price),
         cost: amount(input.cost),
