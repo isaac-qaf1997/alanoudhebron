@@ -122,9 +122,9 @@ export function OpostLocationFields({ city, area, onCityChange, onAreaChange, ci
       <label className="block text-sm">
         المدينة
         {manualCity || failed ? (
-          <input required maxLength={80} value={city} onChange={e => { onCityChange(e.target.value); onAreaChange('') }} className="mt-2 w-full rounded-xl border p-3" placeholder="اكتبي المدينة"/>
+          <input required maxLength={80} value={city} onChange={e => { onCityChange(e.target.value); onAreaChange('') }} className="mt-2 w-full rounded-xl border border-[#765b3b] bg-[#100c09] p-3 text-[#f5e5ca]" placeholder="اكتبي المدينة"/>
         ) : (
-          <select required value={selectedCityId} onChange={e => chooseCity(e.target.value)} className="mt-2 w-full rounded-xl border p-3" disabled={loadingCities}>
+          <select required value={selectedCityId} onChange={e => chooseCity(e.target.value)} className="mt-2 w-full rounded-xl border border-[#765b3b] bg-[#100c09] p-3 text-[#f5e5ca]" disabled={loadingCities}>
             <option value="">{loadingCities ? 'جارٍ تحميل المدن…' : 'اختاري المدينة'}</option>
             {cities.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
             <option value="__manual__">المدينة غير موجودة — إدخال يدوي</option>
@@ -134,7 +134,7 @@ export function OpostLocationFields({ city, area, onCityChange, onAreaChange, ci
       <label className="block text-sm">
         المنطقة / الحي
         {manualArea || manualCity || failed ? (
-          <input required maxLength={100} value={area} onChange={e => onAreaChange(e.target.value)} className="mt-2 w-full rounded-xl border p-3" placeholder="اكتبي المنطقة أو الحي"/>
+          <input required maxLength={100} value={area} onChange={e => onAreaChange(e.target.value)} className="mt-2 w-full rounded-xl border border-[#765b3b] bg-[#100c09] p-3 text-[#f5e5ca]" placeholder="اكتبي المنطقة أو الحي"/>
         ) : (
           <select required value={manualArea ? '__manual__' : area} onChange={e => {
             if (e.target.value === '__manual__') {
@@ -144,20 +144,20 @@ export function OpostLocationFields({ city, area, onCityChange, onAreaChange, ci
               setManualArea(false)
               onAreaChange(e.target.value)
             }
-          }} className="mt-2 w-full rounded-xl border p-3" disabled={!selectedCityId || loadingAreas}>
+          }} className="mt-2 w-full rounded-xl border border-[#765b3b] bg-[#100c09] p-3 text-[#f5e5ca]" disabled={!selectedCityId || loadingAreas}>
             <option value="">{loadingAreas ? 'جارٍ تحميل الأحياء…' : selectedCityId ? 'اختاري المنطقة / الحي' : 'اختاري المدينة أولاً'}</option>
             {areas.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
             <option value="__manual__">المنطقة غير موجودة — إدخال يدوي</option>
           </select>
         )}
         {manualArea && !manualCity && !failed ? (
-          <button type="button" onClick={() => { setManualArea(false); onAreaChange('') }} className="mt-1 text-xs text-[#765637] underline">اختيار حي من قائمة شركة التوصيل</button>
+          <button type="button" onClick={() => { setManualArea(false); onAreaChange('') }} className="mt-1 text-xs text-[#e2bc7e] underline">اختيار حي من قائمة شركة التوصيل</button>
         ) : null}
         {!manualArea && !manualCity && !failed && areas.length > 0 ? (
-          <span className="mt-1 block text-xs text-stone-500">القائمة محدثة من شركة التوصيل؛ اختاري الحي كما يظهر عندهم.</span>
+          <span className="mt-1 block text-xs text-[#bca681]">القائمة محدثة من شركة التوصيل؛ اختاري الحي كما يظهر عندهم.</span>
         ) : null}
       </label>
-      {failed ? <p className="sm:col-span-2 text-xs text-amber-700">تعذر جلب القائمة من شركة التوصيل؛ يمكنكِ إدخال العنوان يدوياً، وسيُراجع قبل إرسال الشحنة.</p> : null}
+      {failed ? <p className="sm:col-span-2 text-xs text-amber-200">تعذر جلب القائمة من شركة التوصيل؛ يمكنكِ إدخال العنوان يدوياً، وسيُراجع قبل إرسال الشحنة.</p> : null}
     </div>
   )
 }
