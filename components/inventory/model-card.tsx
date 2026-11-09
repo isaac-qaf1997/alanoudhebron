@@ -22,12 +22,13 @@ import { Input } from '@/components/ui/field'
 import { formatMoney } from '@/lib/format'
 import type { ModelWithColors } from '@/lib/queries'
 import { cn } from '@/lib/utils'
+import { PRODUCT_CATEGORIES } from '@/lib/categories'
 
 export function ModelCard({ model }: { model: ModelWithColors }) {
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
-  const [info, setInfo] = useState({ name: model.name, sku: model.sku ?? '', price: model.price, cost: model.cost })
+  const [info, setInfo] = useState({ name: model.name, category: model.category || 'غير مصنف', sku: model.sku ?? '', price: model.price, cost: model.cost })
   const [modelImageFile, setModelImageFile] = useState<File | null>(null)
   const [modelGalleryFiles, setModelGalleryFiles] = useState<File[]>([])
   const [newColor, setNewColor] = useState({ color: '', stock: null as number | null, file: null as File | null })
@@ -67,6 +68,11 @@ export function ModelCard({ model }: { model: ModelWithColors }) {
           }}
         >
           <Input aria-label="اسم الموديل" value={info.name} onChange={(e) => setInfo((i) => ({ ...i, name: e.target.value }))} required />
+          <label className="flex flex-col gap-1 text-xs font-medium">تصنيف المنتج
+            <select aria-label="تصنيف المنتج" value={info.category} onChange={(e) => setInfo((i) => ({ ...i, category: e.target.value }))} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+              {PRODUCT_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
+            </select>
+          </label>
           <div className="grid grid-cols-3 gap-2">
             <Input aria-label="الرمز" dir="ltr" placeholder="SKU" value={info.sku} onChange={(e) => setInfo((i) => ({ ...i, sku: e.target.value }))} />
             <Input aria-label="سعر البيع" type="number" min={0} step="0.5" value={info.price} onChange={(e) => setInfo((i) => ({ ...i, price: Number(e.target.value) }))} />
@@ -94,6 +100,7 @@ export function ModelCard({ model }: { model: ModelWithColors }) {
             ) : null}
             <div className="flex min-w-0 flex-col gap-1">
               <h3 className="font-semibold">{model.name}</h3>
+              <span className="w-fit rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{model.category || 'غير مصنف'}</span>
               <p className="text-xs text-muted-foreground">{model.isPublished ? 'منشور في المتجر' : 'مسودة — غير ظاهر للزبائن'}</p>
               <p className="text-xs text-muted-foreground">
                 {model.sku ? `${model.sku} · ` : ''}
