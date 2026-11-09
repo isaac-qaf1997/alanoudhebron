@@ -144,7 +144,7 @@ export async function createModel(input: {
   return run(async () => {
     const name = text(input.name)
     if (!name) throw new UserError('اسم الموديل مطلوب')
-    const category = isProductCategory(input.category) ? input.category : 'غير مصنف'
+    const category = isProductCategory(input.category) ? input.category : 'تشكيلات أخرى'
     const colors = (input.colors ?? []).map((c) => ({
       color: text(c.color, 60),
       stock: c.sizes?.length ? null : (c.stock == null ? null : qty(c.stock, true)),
@@ -272,7 +272,7 @@ export async function updateModel(
       .update(models)
       .set({
         name,
-        category: isProductCategory(input.category) ? input.category : 'غير مصنف',
+        category: isProductCategory(input.category) ? input.category : 'تشكيلات أخرى',
         sku: text(input.sku, 60) || null,
         price: amount(input.price),
         cost: amount(input.cost),
