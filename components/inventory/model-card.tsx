@@ -28,7 +28,7 @@ export function ModelCard({ model }: { model: ModelWithColors }) {
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
-  const [info, setInfo] = useState({ name: model.name, category: model.category || 'غير مصنف', sku: model.sku ?? '', price: model.price, cost: model.cost })
+  const [info, setInfo] = useState({ name: model.name, category: model.category || 'تشكيلات أخرى', sku: model.sku ?? '', price: model.price, cost: model.cost })
   const [modelImageFile, setModelImageFile] = useState<File | null>(null)
   const [modelGalleryFiles, setModelGalleryFiles] = useState<File[]>([])
   const [newColor, setNewColor] = useState({ color: '', stock: null as number | null, file: null as File | null })
@@ -100,7 +100,7 @@ export function ModelCard({ model }: { model: ModelWithColors }) {
             ) : null}
             <div className="flex min-w-0 flex-col gap-1">
               <h3 className="font-semibold">{model.name}</h3>
-              <span className="w-fit rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{model.category || 'غير مصنف'}</span>
+              <span className="w-fit rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{model.category || 'تشكيلات أخرى'}</span>
               <p className="text-xs text-muted-foreground">{model.isPublished ? 'منشور في المتجر' : 'مسودة — غير ظاهر للزبائن'}</p>
               <p className="text-xs text-muted-foreground">
                 {model.sku ? `${model.sku} · ` : ''}
