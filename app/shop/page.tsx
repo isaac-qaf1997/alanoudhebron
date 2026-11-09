@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { getCurrentUser } from '@/lib/auth/session'
 import { getStoreProducts } from '@/lib/queries'
 import { cloudinaryImageUrl } from '@/lib/images'
+import { ProductGrid } from '@/components/store/product-grid'
 
 export const metadata = {
   title: 'العنود للزي الشرعي | الخليل',
@@ -34,7 +35,8 @@ function Logo() {
   )
 }
 
-export default async function ShopPage() {
+export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
+  const params = await searchParams
   const [userResult, productsResult] = await Promise.allSettled([getCurrentUser(), getStoreProducts()])
   const currentUser = userResult.status === 'fulfilled' ? userResult.value : null
   const products = productsResult.status === 'fulfilled' ? productsResult.value : []
@@ -119,10 +121,10 @@ export default async function ShopPage() {
                 { title: 'أثواب', cell: 4 },
                 { title: 'فستان تطريز', cell: 1 },
               ].map((item) => (
-                <a key={item.title} href="#products" className="group relative overflow-hidden rounded-t-[48%] rounded-b-xl border border-[#d0a66a]/80 bg-[#201710] shadow-[0_7px_22px_rgba(0,0,0,.35)]">
+                <Link key={item.title} href={`/shop?category=${encodeURIComponent(item.title)}`} className="group relative overflow-hidden rounded-t-[48%] rounded-b-xl border border-[#d0a66a]/80 bg-[#201710] shadow-[0_7px_22px_rgba(0,0,0,.35)]">
                   <PhotoTile cell={item.cell} label={item.title} className="aspect-[.82] w-full bg-cover bg-center transition duration-500 group-hover:scale-[1.025]"/>
                   <div className="relative mx-auto -mt-1 w-[90%] rounded-full border border-[#e6c58f] bg-gradient-to-b from-[#f2d8a7] to-[#c99c5d] px-2 py-2 text-center text-sm font-bold text-[#1c140c] shadow-lg sm:text-base">{item.title}</div>
-                </a>
+                </Link>
               ))}
             </div>
           </div>
@@ -150,12 +152,7 @@ export default async function ShopPage() {
           <div><p className="text-[10px] font-semibold tracking-[.22em] text-[#a17b48]">THE LATEST</p><h2 className="mt-2 text-2xl font-semibold text-[#f1d8ae]">تشكيلة العنود</h2></div>
           <span className="text-xs text-[#c7aa7d]">{available.length} منتج</span>
         </div>
-        {available.length ? <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4">
-          {available.map((product) => <Link key={product.id} href={`/products/${product.id}`} className="group overflow-hidden rounded-2xl border border-[#8f6a39] bg-[#201710] transition hover:-translate-y-1 hover:shadow-xl hover:shadow-[#6d5637]/20">
-            <div className="aspect-[3/4] overflow-hidden bg-[#eee8de]">{product.imageUrl ? <img src={product.imageUrl} alt={product.name} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-700 group-hover:scale-105"/> : <div className="flex h-full items-center justify-center text-sm text-[#9a8b77]">صورة المنتج قريباً</div>}</div>
-            <div className="p-3 sm:p-4"><h3 className="text-sm font-medium text-[#f1dfc2]">{product.name}</h3><p className="mt-2 font-semibold text-[#e2bc7e]">{product.price.toFixed(2)} ₪</p><p className="mt-1 text-[11px] text-[#c4ad8e]">{product.variants.length} ألوان متاحة</p></div>
-          </Link>)}
-        </div> : <div className="border-y border-[#e6dccd] py-14 text-center"><Logo/><p className="mt-5 font-semibold text-[#514536]">تشكيلتنا الجديدة قريباً</p><p className="mt-2 text-sm text-[#928675]">ستظهر المنتجات هنا بعد إضافتها ونشرها من لوحة الإدارة.</p></div>}
+        <ProductGrid products={available.map(({ id, name, category, price, imageUrl, variants }) => ({ id, name, category, price, imageUrl, variants: variants.map((variant) => ({ color: variant.color })) }))} initialCategory={params.category || ''} />
       </section>
 
       <footer className="mt-8 bg-[#211d19] px-5 py-10 text-center text-sm text-[#e1d2b8]">
