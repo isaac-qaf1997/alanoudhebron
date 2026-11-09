@@ -23,7 +23,7 @@ export default function CheckoutForm({ products }: { products: Product[] }) {
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null)
   const [couponMessage, setCouponMessage] = useState('')
   const [couponBusy, setCouponBusy] = useState(false)
-  const [form, setForm] = useState({ customerName: '', phone: '', city: '', area: '', region: 'west_bank', address: '', paymentMethod: 'cod' as 'cod' | 'prepaid', paymentReference: '' })
+  const [form, setForm] = useState({ customerName: '', phone: '', city: '', area: '', region: 'west_bank', address: '', paymentMethod: 'cod' as const })
   useEffect(() => {
     try { setItems(JSON.parse(localStorage.getItem(KEY) || '[]')) } catch { setItems([]) }
   }, [])
@@ -101,10 +101,9 @@ export default function CheckoutForm({ products }: { products: Product[] }) {
       </section>
       <div className="rounded-xl border border-[#765b3b] bg-[#100c09] p-4 text-sm leading-7">بإتمام الطلب، يرجى الاطلاع على <Link href="/policies" className="font-semibold text-[#e2bc7e] underline underline-offset-4">سياسة التبديل والترجيع</Link>. طلب التبديل أو الإرجاع يُقدّم خلال 24 ساعة من استلام الطرد.</div>
       <h2 className="pt-3 text-lg font-bold">طريقة الدفع</h2>
-      <div className="space-y-3 rounded-xl border border-[#765b3b] bg-[#100c09] p-4">
-        <label className="flex items-center gap-2"><input type="radio" name="paymentMethod" checked={form.paymentMethod === 'cod'} onChange={() => update('paymentMethod', 'cod')}/><span><b>الدفع عند الاستلام</b><span className="block text-sm text-[#bca681]">ادفعي عند وصول الطلب.</span></span></label>
-        <label className="flex items-center gap-2"><input type="radio" name="paymentMethod" checked={form.paymentMethod === 'prepaid'} onChange={() => update('paymentMethod', 'prepaid')}/><span><b>الدفع المسبق المباشر</b><span className="block text-sm text-[#bca681]">يتم تأكيد تفاصيل الدفع مع المتجر.</span></span></label>
-        {form.paymentMethod === 'prepaid' && <label className="block text-sm">رقم الحوالة أو مرجع الدفع (اختياري)<input value={form.paymentReference} onChange={e => update('paymentReference', e.target.value)} maxLength={160} className="mt-2 w-full rounded-xl border border-[#765b3b] bg-[#100c09] p-3 text-[#f5e5ca]"/></label>}
+      <div className="rounded-xl border border-[#765b3b] bg-[#100c09] p-4">
+        <p className="font-semibold">الدفع نقدًا عند الاستلام</p>
+        <p className="mt-1 text-sm text-[#bca681]">ادفعي قيمة طلبكِ لمندوب التوصيل عند استلام الطرد.</p>
       </div>
       {error && <p role="alert" className="rounded-xl border border-red-900/50 bg-red-950/40 p-3 text-sm text-red-200">{error}</p>}
       <button disabled={busy} className="w-full rounded-full border border-[#f1d29b] bg-gradient-to-b from-[#f5dfb6] to-[#c99b5c] px-6 py-4 font-bold text-[#1c140c] disabled:opacity-50">{busy?'جارٍ إرسال الطلب...':'تأكيد الطلب'}</button>
