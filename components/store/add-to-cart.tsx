@@ -73,7 +73,7 @@ export default function AddToCart({ modelId, colors }: { modelId: number; colors
   }
 
   return (
-    <div className="mt-8 space-y-4">
+    <div className="mt-8 space-y-5 text-[#f3dfbd]">
       <label className="block text-sm font-semibold">
         اختاري اللون
         <select
@@ -84,7 +84,7 @@ export default function AddToCart({ modelId, colors }: { modelId: number; colors
             setQuantity(1)
             setMessage('')
           }}
-          className="mt-2 w-full rounded-xl border bg-white p-3"
+          className="mt-2 w-full rounded-xl border border-[#765b3b] bg-[#1b140f] p-3 text-[#f5e5ca]"
         >
           {colors.map((variant) => <option key={variant.color} value={variant.color}>{variant.color}</option>)}
         </select>
@@ -95,7 +95,7 @@ export default function AddToCart({ modelId, colors }: { modelId: number; colors
           <p className="text-sm font-semibold">صور لون {selected.color}</p>
           <div className="flex flex-wrap gap-2">
             {[selected.imageUrl, ...(selected.galleryUrls ?? [])].filter((url): url is string => Boolean(url)).map((url, index) => (
-              <img key={url + index} src={url} alt={`لون ${selected.color} - صورة ${index + 1}`} loading="lazy" className="size-20 rounded-lg border object-cover" />
+              <img key={url + index} src={url} alt={`لون ${selected.color} - صورة ${index + 1}`} loading="lazy" className="size-20 rounded-lg border border-[#8f6a39] object-cover" />
             ))}
           </div>
         </div>
@@ -113,7 +113,7 @@ export default function AddToCart({ modelId, colors }: { modelId: number; colors
                   type="button"
                   aria-pressed={active}
                   onClick={() => toggleSize(variant.size)}
-                  className={`min-w-14 rounded-xl border px-4 py-3 text-sm font-semibold transition ${active ? 'border-[#765637] bg-[#765637] text-white' : 'border-stone-300 bg-white text-[#29251f] hover:border-[#765637]'}`}
+                  className={`min-w-14 rounded-xl border px-4 py-3 text-sm font-semibold transition ${active ? 'border-[#e1bd82] bg-[#d3aa6d] text-[#1a120b]' : 'border-[#765b3b] bg-[#1b140f] text-[#f3dfbd] hover:border-[#d6b276]'}`}
                 >
                   {variant.size}
                 </button>
@@ -126,7 +126,7 @@ export default function AddToCart({ modelId, colors }: { modelId: number; colors
                 const variant = sizeVariants.find((entry) => entry.size === size)
                 const max = Math.min(20, variant?.stock ?? 500)
                 return (
-                  <div key={size} className="flex items-center justify-between gap-3 rounded-xl border bg-white p-3">
+                  <div key={size} className="flex items-center justify-between gap-3 rounded-xl border border-[#765b3b] bg-[#1b140f] p-3">
                     <span className="text-sm font-semibold">مقاس {size}</span>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-stone-500">الكمية</span>
