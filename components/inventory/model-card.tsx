@@ -96,7 +96,7 @@ export function ModelCard({ model }: { model: ModelWithColors }) {
             {model.imageUrl ? (
               // Cloudinary-hosted inventory image.
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={model.imageUrl} alt={model.name} className="size-16 shrink-0 rounded-lg border border-border object-cover" />
+              <img src={model.imageUrl} alt={model.name} loading="lazy" decoding="async" className="size-16 shrink-0 rounded-lg border border-border object-cover" />
             ) : null}
             <div className="flex min-w-0 flex-col gap-1">
               <h3 className="font-semibold">{model.name}</h3>
@@ -140,7 +140,7 @@ export function ModelCard({ model }: { model: ModelWithColors }) {
           const urls = await Promise.all(modelGalleryFiles.map(uploadInventoryImage))
           return updateModelGallery(model.id, [...model.galleryUrls, ...urls])
         }, () => setModelGalleryFiles([]))}>رفع {modelGalleryFiles.length} صورة إضافية</Button> : null}
-        {model.galleryUrls.length ? <div className="flex flex-wrap gap-2">{model.galleryUrls.map((url, index) => <div key={url + index} className="relative"><img src={url} alt={`صورة إضافية ${index + 1}`} className="size-14 rounded-md object-cover" /><button type="button" aria-label="حذف الصورة" disabled={pending} onClick={() => act(() => updateModelGallery(model.id, model.galleryUrls.filter((_, i) => i !== index)))} className="absolute -right-1 -top-1 rounded-full bg-destructive px-1 text-xs text-white">×</button><div className="mt-1 flex justify-center gap-1"><button type="button" aria-label="تحريك الصورة لليسار" disabled={pending || index === 0} onClick={() => act(() => updateModelGallery(model.id, model.galleryUrls.map((value, i, all) => i === index - 1 ? all[index] : i === index ? all[index - 1] : value)))} className="text-xs disabled:opacity-30">←</button><button type="button" aria-label="تحريك الصورة لليمين" disabled={pending || index === model.galleryUrls.length - 1} onClick={() => act(() => updateModelGallery(model.id, model.galleryUrls.map((value, i, all) => i === index + 1 ? all[index] : i === index ? all[index + 1] : value)))} className="text-xs disabled:opacity-30">→</button></div></div>)}</div> : <p className="text-xs text-muted-foreground">لا توجد صور إضافية بعد.</p>}
+        {model.galleryUrls.length ? <div className="flex flex-wrap gap-2">{model.galleryUrls.map((url, index) => <div key={url + index} className="relative"><img src={url} alt={`صورة إضافية ${index + 1}`} loading="lazy" decoding="async" className="size-14 rounded-md object-cover" /><button type="button" aria-label="حذف الصورة" disabled={pending} onClick={() => act(() => updateModelGallery(model.id, model.galleryUrls.filter((_, i) => i !== index)))} className="absolute -right-1 -top-1 rounded-full bg-destructive px-1 text-xs text-white">×</button><div className="mt-1 flex justify-center gap-1"><button type="button" aria-label="تحريك الصورة لليسار" disabled={pending || index === 0} onClick={() => act(() => updateModelGallery(model.id, model.galleryUrls.map((value, i, all) => i === index - 1 ? all[index] : i === index ? all[index - 1] : value)))} className="text-xs disabled:opacity-30">←</button><button type="button" aria-label="تحريك الصورة لليمين" disabled={pending || index === model.galleryUrls.length - 1} onClick={() => act(() => updateModelGallery(model.id, model.galleryUrls.map((value, i, all) => i === index + 1 ? all[index] : i === index ? all[index + 1] : value)))} className="text-xs disabled:opacity-30">→</button></div></div>)}</div> : <p className="text-xs text-muted-foreground">لا توجد صور إضافية بعد.</p>}
       </div>
       <ul className="flex flex-col gap-3">
         {model.colors.map((c) => (
@@ -347,7 +347,7 @@ function ColorRow({
           finally { setGalleryPending(false) }
         }}>{galleryPending ? 'جارٍ رفع الصور...' : `رفع ${galleryFiles.length} صور`}</Button> : null}
         {galleryError ? <p role="alert" className="text-xs text-destructive">{galleryError}</p> : null}
-        {galleryUrls.length ? <div className="flex flex-wrap gap-2">{galleryUrls.map((url, index) => <div key={url + index} className="relative"><img src={url} alt={`صورة ${color} ${index + 1}`} className="size-12 rounded-md object-cover" /><button type="button" aria-label="حذف صورة اللون" disabled={disabled} onClick={() => onRemoveGallery(index)} className="absolute -right-1 -top-1 rounded-full bg-destructive px-1 text-xs text-white">×</button></div>)}</div> : null}
+        {galleryUrls.length ? <div className="flex flex-wrap gap-2">{galleryUrls.map((url, index) => <div key={url + index} className="relative"><img src={url} alt={`صورة ${color} ${index + 1}`} loading="lazy" decoding="async" className="size-12 rounded-md object-cover" /><button type="button" aria-label="حذف صورة اللون" disabled={disabled} onClick={() => onRemoveGallery(index)} className="absolute -right-1 -top-1 rounded-full bg-destructive px-1 text-xs text-white">×</button></div>)}</div> : null}
         <ImagePicker compact title={`الصورة الرئيسية للون ${color}`} imageUrl={imageUrl} file={imageFile} onFileChange={setImageFile} />
         {imageFile ? (
           <Button type="button" size="sm" variant="outline" disabled={imagePending || disabled} onClick={saveImage}>
