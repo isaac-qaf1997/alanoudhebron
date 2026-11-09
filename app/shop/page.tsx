@@ -132,8 +132,9 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
           <div className="relative border-t border-[#b88b50]/70 bg-[#100c09] px-4 pb-7 pt-5 text-center sm:px-8 sm:pt-7">
             <div className="mx-auto flex max-w-2xl items-center justify-center gap-3 text-lg font-semibold text-[#f1d5a5] sm:text-xl">
               <span className="text-3xl text-[#d9b77d]">♧</span>
-              <span>الدفع عند الاستلام</span>
+              <span>الدفع عند الاستلام أو الدفع المسبق</span>
             </div>
+            <p className="mt-2 text-xs text-[#c4ad8e]">توصيل إلى مختلف المناطق · معاينة القطعة عند الاستلام</p>
             <a href="#products" className="mx-auto mt-6 inline-flex min-h-14 items-center justify-center gap-3 rounded-full border-2 border-[#f1d29b] bg-gradient-to-b from-[#f5dfb6] to-[#c99b5c] px-10 text-lg font-bold text-[#1c140c] shadow-[0_5px_0_#8e642f,0_12px_28px_rgba(0,0,0,.35)] transition hover:-translate-y-0.5 sm:text-xl">
               <span>تسوّقي الآن</span><span className="text-2xl">🛒</span>
             </a>
