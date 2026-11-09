@@ -8,6 +8,7 @@ import { Field, Input } from '@/components/ui/field'
 import { Panel } from '@/components/ui/panel'
 import { ImagePicker } from '@/components/inventory/image-picker'
 import { uploadInventoryImage } from '@/components/inventory/upload-image'
+import { PRODUCT_CATEGORIES } from '@/lib/categories'
 
 type DraftSize = { key: number; size: string; stock: number | null }
 type DraftColor = { key: number; color: string; stock: number | null; sizes: DraftSize[]; file: File | null; galleryFiles: File[] }
@@ -19,7 +20,7 @@ const newColor = (): DraftColor => ({ key: ++colorKey, color: '', stock: 1, size
 export function ModelForm() {
   const uid = useId()
   const [pending, startTransition] = useTransition()
-  const [form, setForm] = useState({ name: '', sku: '', price: '', cost: '' })
+  const [form, setForm] = useState({ name: '', category: 'غير مصنف', sku: '', price: '', cost: '' })
   const [modelImage, setModelImage] = useState<File | null>(null)
   const [modelGalleryFiles, setModelGalleryFiles] = useState<File[]>([])
   const [colors, setColors] = useState<DraftColor[]>(() => [newColor()])
@@ -54,11 +55,11 @@ export function ModelForm() {
           }))),
         ])
         const result = await createModel({
-          name: form.name, sku: form.sku, price: Number(form.price || 0), cost: Number(form.cost || 0),
+          name: form.name, category: form.category, sku: form.sku, price: Number(form.price || 0), cost: Number(form.cost || 0),
           imageUrl: modelImageUrl, galleryUrls: await Promise.all(modelGalleryFiles.map(uploadInventoryImage)), colors: preparedColors,
         })
         if (result.ok) {
-          setForm({ name: '', sku: '', price: '', cost: '' })
+          setForm({ name: '', category: 'غير مصنف', sku: '', price: '', cost: '' })
           setModelImage(null)
           setModelGalleryFiles([])
           setColors([newColor()])
@@ -75,6 +76,11 @@ export function ModelForm() {
       <form onSubmit={submit} className="flex flex-col gap-3">
         <Field label="اسم الموديل" htmlFor={`${uid}-name`}>
           <Input id={`${uid}-name`} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required />
+        </Field>
+        <Field label="تصنيف المنتج" htmlFor={`${uid}-category`}>
+          <select id={`${uid}-category`} value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+            {PRODUCT_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
+          </select>
         </Field>
         <Field label="رمز الموديل (اختياري)" htmlFor={`${uid}-sku`}>
           <Input id={`${uid}-sku`} dir="ltr" className="text-end" value={form.sku} onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))} />
