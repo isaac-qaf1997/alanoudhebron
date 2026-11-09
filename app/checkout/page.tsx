@@ -17,5 +17,5 @@ export default async function CheckoutPage() {
         sizes: color.sizes,
       })),
   })).filter((product) => product.colors.length)
-  return <main dir="rtl" className="min-h-dvh bg-[#faf8f4] px-4 py-10 text-[#29251f]"><div className="mx-auto max-w-6xl"><a href="/shop" className="font-bold text-[#765637]">العنود</a><div className="my-8"><p className="text-sm text-[#8a6841]">خطوة أخيرة</p><h1 className="mt-2 text-3xl font-bold">إتمام الطلب</h1></div><CheckoutForm products={available}/></div></main>
+  return <main dir="rtl" className="min-h-dvh bg-[#100b08] px-4 py-10 text-[#f3dfbd]"><div className="mx-auto max-w-6xl"><a href="/shop" className="font-bold text-[#f1d8ae]">العنود</a><div className="my-8"><p className="text-sm text-[#c9a36b]">خطوة أخيرة</p><h1 className="mt-2 text-3xl font-bold">إتمام الطلب</h1></div><CheckoutForm products={available}/></div></main>
 }
