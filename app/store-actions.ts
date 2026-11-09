@@ -50,7 +50,7 @@ export async function submitStoreOrder(input: {
   area: string
   region: string
   address: string
-  paymentMethod: 'cod' | 'prepaid'
+  paymentMethod: 'cod'
   paymentReference?: string
   checkoutRequestKey: string
   couponCode?: string
@@ -71,7 +71,7 @@ export async function submitStoreOrder(input: {
     if (expectedRegion && expectedRegion !== region) {
       return { ok: false, error: 'منطقة التوصيل لا تتوافق مع المدينة المحددة. راجعي المدينة ومنطقة التوصيل.' }
     }
-    if (paymentMethod !== 'cod' && paymentMethod !== 'prepaid') return { ok: false, error: 'طريقة الدفع غير صالحة.' }
+    if (paymentMethod !== 'cod') return { ok: false, error: 'طريقة الدفع المتاحة حاليًا هي الدفع عند الاستلام فقط.' }
     const checkoutRequestKey = clean(input.checkoutRequestKey, 36)
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(checkoutRequestKey)) {
       return { ok: false, error: 'تعذر التحقق من الطلب. حدّثي الصفحة وحاولي مرة أخرى.' }
@@ -168,8 +168,8 @@ export async function submitStoreOrder(input: {
       const [order] = await tx.insert(orders).values({
         customerName, phone, region, city, area, address, itemsTotal, shippingFee, discount, couponCode: couponCode || null, total, costTotal,
         paymentMethod, amountPaid: 0,
-        paymentStatus: paymentMethod === 'cod' ? 'unpaid' : 'pending_review',
-        paymentReference: paymentMethod === 'prepaid' ? clean(input.paymentReference, 160) || null : null,
+        paymentStatus: 'unpaid',
+        paymentReference: null,
         checkoutRequestKey,
         notes: 'طلب من المتجر الإلكتروني',
       }).returning({ id: orders.id })
