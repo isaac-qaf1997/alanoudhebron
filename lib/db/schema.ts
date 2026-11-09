@@ -27,7 +27,7 @@ export type AppUser = typeof users.$inferSelect
 export const models = pgTable('models', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
-  category: text('category').notNull().default('غير مصنف'),
+  category: text('category').notNull().default('تشكيلات أخرى'),
   sku: text('sku'),
   price: money('price').notNull().default(0),
   cost: money('cost').notNull().default(0),
