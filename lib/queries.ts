@@ -55,6 +55,7 @@ export type ModelWithColors = Awaited<ReturnType<typeof getModels>>[number]
 export type StoreProduct = {
   id: number
   name: string
+  category: string
   price: number
   imageUrl: string | null
   galleryUrls: string[]
@@ -77,6 +78,7 @@ export async function getStoreProducts(productId?: number): Promise<StoreProduct
   const rows = await db.select({
     productId: models.id,
     productName: models.name,
+    category: models.category,
     price: models.price,
     imageUrl: models.imageUrl,
     colorId: modelColors.id,
@@ -103,6 +105,7 @@ export async function getStoreProducts(productId?: number): Promise<StoreProduct
       product = {
         id: row.productId,
         name: row.productName,
+        category: row.category,
         price: row.price,
         imageUrl: row.imageUrl,
         galleryUrls: row.modelGalleryUrls ?? [],
