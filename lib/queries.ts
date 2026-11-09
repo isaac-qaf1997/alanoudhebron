@@ -35,6 +35,7 @@ export async function getModels() {
   return modelRows.map((model) => ({
     id: model.id,
     name: model.name,
+    category: model.category,
     sku: model.sku,
     price: model.price,
     cost: model.cost,
