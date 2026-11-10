@@ -1,11 +1,11 @@
 'use server'
 
-import { eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import { createHash } from 'node:crypto'
 import { headers } from 'next/headers'
 import { db } from '@/lib/db'
-import { coupons, modelColors, modelSizes, models, orderItems, orders } from '@/lib/db/schema'
-import { CITY_REGIONS, REGIONS, isRegion } from '@/lib/constants'
+import { coupons, couriers, modelColors, modelSizes, models, orderItems, orders } from '@/lib/db/schema'
+import { CITY_REGIONS, REGIONS, courierFeeFor, isRegion } from '@/lib/constants'
 
 export type StoreOrderResult = { ok: true; orderId: number } | { ok: false; error: string }
 
@@ -117,6 +117,7 @@ export async function submitStoreOrder(input: {
     const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0)
     if (totalQuantity > 50) return { ok: false, error: 'الحد الأقصى للطلب 50 قطعة.' }
 
+    let shouldDispatchToOpost = false
     const orderId = await db.transaction(async (tx) => {
       const modelIds = [...new Set(items.map((item) => item.modelId))]
       // A transaction is backed by one PostgreSQL client; sequential reads avoid
@@ -164,9 +165,21 @@ export async function submitStoreOrder(input: {
         await tx.update(coupons).set({ usedCount: sql`${coupons.usedCount} + 1` }).where(eq(coupons.id, coupon!.id))
       }
       const shippingFee = REGIONS[region as keyof typeof REGIONS].fee
+      const autoCourier = process.env.OPOST_ACCESS_TOKEN
+        ? (await tx.select().from(couriers).where(and(
+            eq(couriers.integrationKey, 'opost'),
+            eq(couriers.active, true),
+            eq(couriers.apiEnabled, true),
+            eq(couriers.sendOnOrderCreate, true),
+          )).limit(1))[0]
+        : undefined
+      shouldDispatchToOpost = Boolean(autoCourier)
       const total = itemsTotal + shippingFee - discount
       const [order] = await tx.insert(orders).values({
-        customerName, phone, region, city, area, address, itemsTotal, shippingFee, discount, couponCode: couponCode || null, total, costTotal,
+        customerName, phone, region, city, area, address,
+        courierId: autoCourier?.id ?? null,
+        courierFee: courierFeeFor(autoCourier, region),
+        itemsTotal, shippingFee, discount, couponCode: couponCode || null, total, costTotal,
         paymentMethod, amountPaid: 0,
         paymentStatus: 'unpaid',
         paymentReference: null,
@@ -176,6 +189,15 @@ export async function submitStoreOrder(input: {
       await tx.insert(orderItems).values(orderLines.map(({ colorId, sizeId, stockTracked, ...line }) => ({ ...line, orderId: order.id })))
       return order.id
     })
+    if (shouldDispatchToOpost) {
+      try {
+        const { dispatchShipment } = await import('@/lib/shipping/dispatch')
+        await dispatchShipment(orderId)
+      } catch (dispatchError) {
+        // The order is already committed; carrier downtime must not turn a valid checkout into a failed order.
+        console.error(`[store] Opost dispatch failed for order ${orderId}`, dispatchError)
+      }
+    }
     return { ok: true, orderId }
   } catch (error) {
     // If two identical submissions race, the unique index lets only one create an order.
