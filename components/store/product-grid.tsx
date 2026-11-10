@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { PRODUCT_CATEGORIES } from '@/lib/categories'
 
 type Product = { id: number; name: string; category: string; price: number; imageUrl: string | null; variants: { color: string }[] }
@@ -33,7 +34,7 @@ export function ProductGrid({ products, initialCategory = '' }: { products: Prod
     </div>
     {visible.length ? <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4">
       {visible.map((product) => <Link key={product.id} href={`/products/${product.id}`} className="group overflow-hidden rounded-2xl border border-[#8f6a39]/80 bg-[#201710] transition duration-300 hover:-translate-y-1 hover:border-[#d6b276] hover:shadow-xl hover:shadow-black/30">
-        <div className="relative aspect-[3/4] overflow-hidden bg-[#eee8de]">{product.imageUrl ? <img src={product.imageUrl} alt={product.name} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-700 group-hover:scale-105"/> : <div className="flex h-full items-center justify-center text-sm text-[#9a8b77]">صورة المنتج قريباً</div>}<span className="absolute right-2 top-2 rounded-full border border-[#d6b276]/70 bg-[#17100ddd] px-2.5 py-1 text-[10px] text-[#f2d8ad]">{product.category}</span></div>
+        <div className="relative aspect-[3/4] overflow-hidden bg-[#eee8de]">{product.imageUrl ? <Image src={product.imageUrl} alt={product.name} fill sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" loading="lazy" className="object-cover transition duration-700 group-hover:scale-105"/> : <div className="flex h-full items-center justify-center text-sm text-[#9a8b77]">صورة المنتج قريباً</div>}<span className="absolute right-2 top-2 rounded-full border border-[#d6b276]/70 bg-[#17100ddd] px-2.5 py-1 text-[10px] text-[#f2d8ad]">{product.category}</span></div>
         <div className="p-3 sm:p-4"><h3 className="line-clamp-2 min-h-10 text-sm font-semibold text-[#f1dfc2]">{product.name}</h3><p className="mt-2 font-bold text-[#e2bc7e]">{product.price.toFixed(2)} ₪</p><p className="mt-1 text-[11px] text-[#c4ad8e]">{product.variants.length} ألوان متاحة</p><span className="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-[#9a7546] py-2 text-xs font-semibold text-[#e9d1aa] transition group-hover:bg-[#c99b5c] group-hover:text-[#1c140c]">عرض التفاصيل</span></div>
       </Link>)}
     </div> : <div className="rounded-2xl border border-dashed border-[#8f6a39] px-5 py-14 text-center"><p className="text-lg font-semibold text-[#f1d8ae]">ما لقينا منتجات بهذا الاختيار</p><p className="mt-2 text-sm text-[#c4ad8e]">جرّبي قسمًا آخر أو غيّري كلمة البحث.</p><button onClick={() => { setCategory(''); setSearch('') }} className="mt-5 rounded-full bg-[#d0a66a] px-6 py-2.5 text-sm font-bold text-[#1c140c]">عرض كل المنتجات</button></div>}
