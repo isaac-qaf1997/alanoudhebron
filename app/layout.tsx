@@ -3,6 +3,8 @@ import type { Metadata, Viewport } from 'next'
 import { IBM_Plex_Sans_Arabic } from 'next/font/google'
 import './globals.css'
 export const dynamic = 'force-dynamic'
+// Keep server-side work close to the Neon database in Frankfurt.
+export const preferredRegion = 'fra1'
 const arabic = IBM_Plex_Sans_Arabic({
   subsets: ['arabic'],
   weight: ['400', '500', '600', '700'],
