@@ -371,9 +371,9 @@ export async function createOrder(input: OrderInput) {
 
       for (const [colorId, needed] of stockNeeded) {
         const row = colorRows.find((c) => c.id === colorId)!
-        if (needed > 0 && row.stock < needed) {
+        if (needed > 0 && (row.stock ?? 0) < needed) {
           const model = getModel(row.modelId)
-          throw new UserError(`المخزون غير كافٍ: ${model.name} (${row.color}) — المتوفر ${row.stock}`)
+          throw new UserError(`المخزون غير كافٍ: ${model.name} (${row.color}) — المتوفر ${row.stock ?? 0}`)
         }
       }
 

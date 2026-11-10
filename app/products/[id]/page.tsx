@@ -1,28 +1,38 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { notFound } from 'next/navigation'
-import { asc, eq } from 'drizzle-orm'
-import { db } from '@/lib/db'
-import { models, modelColors } from '@/lib/db/schema'
+import { getStoreProducts } from '@/lib/queries'
+import { cloudinaryImageUrl } from '@/lib/images'
 import AddToCart from '@/components/store/add-to-cart'
 
 export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const productId = Number(id)
   if (!Number.isInteger(productId) || productId <= 0) notFound()
-  const [product] = await db.select({ id: models.id, name: models.name, price: models.price, imageUrl: models.imageUrl }).from(models).where(eq(models.id, productId)).limit(1)
+  const [product] = await getStoreProducts(productId)
   if (!product) notFound()
-  const variants = await db.select({ color: modelColors.color, stock: modelColors.stock, imageUrl: modelColors.imageUrl }).from(modelColors).where(eq(modelColors.modelId, productId)).orderBy(asc(modelColors.id))
-  const inStock = variants.filter((v) => v.stock > 0)
+  const inStock = product.colors.filter((variant) => variant.sizes.length
+    ? variant.sizes.some((size) => size.stock === null || size.stock > 0)
+    : variant.stock === null || variant.stock > 0)
+  const image = cloudinaryImageUrl(product.imageUrl || inStock.find((variant) => variant.imageUrl)?.imageUrl, 1200)
+  const gallery = [
+    ...(product.galleryUrls ?? []),
+    ...inStock.flatMap((variant) => [variant.imageUrl, ...(variant.galleryUrls ?? [])].filter((url): url is string => Boolean(url))),
+  ].map((url) => cloudinaryImageUrl(url, 900)).filter((url, index, all): url is string => Boolean(url) && all.indexOf(url) === index)
   if (!inStock.length) notFound()
-  const image = inStock.find((v) => v.imageUrl)?.imageUrl || product.imageUrl
-  return <main dir="rtl" className="min-h-dvh bg-[#faf8f4] text-[#29251f]">
-    <header className="border-b border-[#e9e2d7] bg-white px-5 py-5"><div className="mx-auto flex max-w-6xl justify-between"><Link href="/shop" className="text-xl font-bold text-[#7b5b36]">العنود</Link><Link href="/shop" className="text-sm">العودة للمتجر</Link></div></header>
-    <section className="mx-auto grid max-w-6xl gap-10 px-5 py-10 md:grid-cols-2">
-      <div className="aspect-[4/5] overflow-hidden rounded-3xl bg-[#eee8df]">{image ? <img src={image} alt={product.name} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-[#a69a89]">صورة المنتج قريباً</div>}</div>
-      <div className="py-4"><p className="text-sm text-[#8a6841]">العنود للزي الشرعي</p><h1 className="mt-3 text-3xl font-bold">{product.name}</h1><p className="mt-5 text-2xl font-bold text-[#8a6841]">{product.price.toFixed(2)} ₪</p>
-        <AddToCart modelId={product.id} colors={inStock.map(v => ({ color: v.color, stock: v.stock }))}/>
-        <Link href="/cart" className="mt-4 inline-flex text-sm text-[#765637] underline">الانتقال إلى السلة</Link>
-      </div>
-    </section>
+  return <main dir="rtl" className="min-h-dvh bg-[#100b08] text-[#f3dfbd]">
+    <header className="sticky top-0 z-20 border-b border-[#8f6a39]/70 bg-[#17110d]/95 px-5 py-4 backdrop-blur-xl"><div className="mx-auto flex max-w-6xl items-center justify-between"><Link href="/shop" className="text-xl font-bold text-[#f1d8ae]">العنود <span className="text-xs font-normal text-[#c9a36b]">للزي الشرعي · الخليل</span></Link><Link href="/cart" className="rounded-full border border-[#8f6a39] px-4 py-2 text-sm text-[#f1d8ae]">سلة التسوق</Link></div></header>
+    <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6"><nav className="text-xs text-[#bda47f]"><Link href="/shop" className="hover:text-[#f1d8ae]">الرئيسية</Link><span className="mx-2">/</span><span>{product.category}</span><span className="mx-2">/</span><span className="text-[#f1d8ae]">{product.name}</span></nav>
+      <section className="mt-6 grid gap-8 lg:grid-cols-[1.05fr_.95fr] lg:gap-12">
+        <div className="space-y-3"><div className="relative aspect-[4/5] overflow-hidden rounded-3xl border border-[#8f6a39]/70 bg-[#211811]">{image ? <Image src={image} alt={product.name} fill priority sizes="(max-width: 1024px) 100vw, 50vw" className="object-cover"/> : <div className="flex h-full items-center justify-center text-[#bca681]">صورة المنتج قريباً</div>}</div>
+          {gallery.length ? <div className="grid grid-cols-4 gap-2">{gallery.slice(0,8).map((url,index)=><Image key={url+index} src={url} alt={`صورة إضافية ${product.name} ${index+1}`} width={240} height={240} loading="lazy" sizes="(max-width: 640px) 25vw, 120px" className="aspect-square w-full rounded-xl border border-[#8f6a39]/60 object-cover"/>)}</div> : null}
+        </div>
+        <div className="lg:sticky lg:top-28 lg:self-start"><span className="inline-flex rounded-full border border-[#b48b52] bg-[#211811] px-3 py-1 text-xs text-[#e2bc7e]">{product.category}</span><p className="mt-4 text-xs tracking-[.18em] text-[#a17b48]">AL ANOUD · HEBRON</p><h1 className="mt-2 text-3xl font-bold leading-tight text-[#f8e7c9] sm:text-4xl">{product.name}</h1><p className="mt-5 text-2xl font-bold text-[#e2bc7e]">{product.price.toFixed(2)} ₪</p><p className="mt-2 text-sm leading-7 text-[#c4ad8e]">اختاري اللون والمقاس المتاحين، ثم أضيفي القطعة إلى سلة التسوق لإكمال طلبكِ.</p>
+          <div className="my-6 h-px bg-[#8f6a39]/60"/><AddToCart modelId={product.id} colors={inStock.map((variant) => ({ color: variant.color, stock: variant.stock, imageUrl: cloudinaryImageUrl(variant.imageUrl, 900), galleryUrls: (variant.galleryUrls ?? []).map((url) => cloudinaryImageUrl(url, 900)).filter((url): url is string => Boolean(url)), sizes: variant.sizes.map((size) => ({ size: size.size, stock: size.stock })) }))}/>
+          <div className="mt-7 grid grid-cols-2 gap-3"><div className="rounded-xl border border-[#8f6a39]/60 bg-[#1b140f] p-3"><p className="text-xs text-[#bca681]">مدة التوصيل</p><p className="mt-1 text-sm font-semibold text-[#f1d8ae]">2–5 أيام عمل عادةً</p></div><div className="rounded-xl border border-[#8f6a39]/60 bg-[#1b140f] p-3"><p className="text-xs text-[#bca681]">طرق الدفع</p><p className="mt-1 text-sm font-semibold text-[#f1d8ae]">نقدًا عند الاستلام</p></div></div>
+          <p className="mt-4 text-xs leading-6 text-[#bca681]">لأي استفسار عن القماش أو اللون أو المقاس، تواصلي معنا عبر <a href="https://wa.me/970569388780" className="font-semibold text-[#e2bc7e] underline underline-offset-4">واتساب المتجر</a>.</p>
+        </div>
+      </section>
+    </div>
   </main>
 }

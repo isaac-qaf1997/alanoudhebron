@@ -10,7 +10,7 @@ import { REGIONS } from '@/lib/constants'
 import type { CourierPublic } from '@/lib/db/schema'
 import { formatMoney } from '@/lib/format'
 
-const empty = { name: '', phone: '', feeWestBank: 18, feeJerusalem: 28, feeArea67: 50, feeInside: 68, active: true, integrationKey: '', apiEnabled: false }
+const empty = { name: '', phone: '', feeWestBank: 18, feeJerusalem: 28, feeArea67: 50, feeInside: 68, active: true, integrationKey: '', apiEnabled: false, sendOnOrderCreate: false }
 
 export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
   const uid = useId()
@@ -18,6 +18,10 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
   const [form, setForm] = useState(empty)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [checkingOpost, setCheckingOpost] = useState(false)
+  const [opostCheck, setOpostCheck] = useState<{ ok: boolean; message: string } | null>(null)
+  const [syncingOpost, setSyncingOpost] = useState(false)
+  const [opostSync, setOpostSync] = useState<{ ok: boolean; message: string } | null>(null)
 
   function edit(c: CourierPublic) {
     setEditingId(c.id)
@@ -31,6 +35,7 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
       active: c.active,
       integrationKey: c.integrationKey ?? '',
       apiEnabled: c.apiEnabled,
+      sendOnOrderCreate: c.sendOnOrderCreate,
     })
   }
 
@@ -47,6 +52,59 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
       if (result.ok) reset()
       else setError(result.error)
     })
+  }
+
+  async function syncOpostStatuses() {
+    setSyncingOpost(true)
+    setOpostSync(null)
+    try {
+      const response = await fetch('/api/admin/opost/sync', { method: 'POST', cache: 'no-store' })
+      const result = await response.json() as {
+        ok?: boolean
+        error?: string
+        pagesRead?: number
+        totalShipments?: number
+        matched?: number
+        changed?: number
+        unchanged?: number
+        unmatched?: number
+      }
+      if (!response.ok || !result.ok) {
+        setOpostSync({ ok: false, message: result.error || 'تعذرت مزامنة حالات الشحن.' })
+      } else {
+        setOpostSync({
+          ok: true,
+          message: `اكتملت القراءة: ${result.pagesRead} صفحة من Opost، ${result.matched} شحنة مطابقة، وتم تحديث حالة ${result.changed} طلب. غير المطابق: ${result.unmatched}.`,
+        })
+      }
+    } catch {
+      setOpostSync({ ok: false, message: 'تعذر الوصول إلى خدمة مزامنة Opost. حاولي مرة أخرى.' })
+    } finally {
+      setSyncingOpost(false)
+    }
+  }
+
+  async function checkOpostConnection() {
+    setCheckingOpost(true)
+    setOpostCheck(null)
+    try {
+      const response = await fetch('/api/admin/opost/connection-check', { method: 'GET', cache: 'no-store' })
+      const result = await response.json() as { ok?: boolean; message?: string; error?: string; citiesCount?: number; hebronAreasCount?: number; hebronCityAreaAlias?: string | null; hebronAreaSuggestions?: string[] }
+      if (!response.ok || !result.ok) {
+        setOpostCheck({ ok: false, message: result.error || 'تعذر إكمال فحص الاتصال.' })
+      } else {
+        setOpostCheck({
+          ok: true,
+          message: result.hebronCityAreaAlias
+            ? `الاتصال ناجح — ${result.citiesCount} مدينة و${result.hebronAreasCount} منطقة. تم العثور على منطقة المدينة في Opost باسم: ${result.hebronCityAreaAlias}.`
+            : `الاتصال ناجح — ${result.citiesCount} مدينة و${result.hebronAreasCount} منطقة. لم يظهر اسم "مدينة الخليل" كمنطقة مستقلة.${result.hebronAreaSuggestions?.length ? ` المناطق القريبة: ${result.hebronAreaSuggestions.join('، ')}.` : ''}`,
+        })
+      }
+    } catch {
+      setOpostCheck({ ok: false, message: 'تعذر الوصول إلى نقطة فحص Opost. حاولي مرة أخرى.' })
+    } finally {
+      setCheckingOpost(false)
+    }
   }
 
   function remove(c: CourierPublic) {
@@ -120,6 +178,17 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
             <input
               type="checkbox"
               className="size-4 accent-primary"
+              checked={form.sendOnOrderCreate}
+              disabled={!form.apiEnabled || form.integrationKey !== 'opost'}
+              onChange={(e) => setForm((f) => ({ ...f, sendOnOrderCreate: e.target.checked }))}
+            />
+            إرسال الشحنة تلقائياً إلى أوبتيموس عند إنشاء الطلب
+          </label>
+          <p className="text-xs text-muted-foreground">يبقى الإرسال التلقائي متوقفاً حتى تفعّليه بنفسك بعد اختبار الربط.</p>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="size-4 accent-primary"
               checked={form.active}
               onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))}
             />
@@ -170,7 +239,7 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
                     <p className="text-xs text-muted-foreground" dir="ltr">
                       {c.phone || '—'}
                     </p>
-                    {c.integrationKey ? <p className="mt-1 text-xs text-muted-foreground" dir="ltr">API: {c.integrationKey} · {c.apiEnabled ? 'مفعّل' : 'متوقف'}</p> : null}
+                    {c.integrationKey ? <p className="mt-1 text-xs text-muted-foreground" dir="ltr">API: {c.integrationKey} · {c.apiEnabled ? 'مفعّل' : 'متوقف'}{c.sendOnOrderCreate ? ' · إرسال تلقائي' : ''}</p> : null}
                   </div>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon-sm" onClick={() => edit(c)} aria-label={`تعديل ${c.name}`}>
@@ -187,6 +256,23 @@ export function CourierManager({ couriers }: { couriers: CourierPublic[] }) {
                     </Button>
                   </div>
                 </div>
+                {c.integrationKey === 'opost' ? (
+                  <div className="flex flex-col items-start gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={checkOpostConnection} disabled={checkingOpost || !c.apiEnabled}>
+                      {checkingOpost ? 'جارٍ فحص الاتصال…' : 'فحص اتصال Opost'}
+                    </Button>
+                    {opostCheck ? (
+                      <p role="status" className={opostCheck.ok ? 'text-xs text-success' : 'text-xs text-destructive'}>{opostCheck.message}</p>
+                    ) : null}
+                    <Button type="button" variant="outline" size="sm" onClick={syncOpostStatuses} disabled={syncingOpost || !c.apiEnabled}>
+                      {syncingOpost ? 'جارٍ مزامنة الحالات…' : 'مزامنة حالات Opost الآن'}
+                    </Button>
+                    {opostSync ? (
+                      <p role="status" className={opostSync.ok ? 'text-xs text-success' : 'text-xs text-destructive'}>{opostSync.message}</p>
+                    ) : null}
+                    <p className="text-xs text-muted-foreground">فحص قراءة فقط؛ لا ينشئ شحنات ولا يرسل بيانات طلبات.</p>
+                  </div>
+                ) : null}
                 <dl className="grid grid-cols-2 gap-2 text-center text-xs sm:grid-cols-4">
                   {[
                     ['الضفة', c.feeWestBank],

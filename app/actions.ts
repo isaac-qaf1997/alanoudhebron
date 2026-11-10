@@ -1,13 +1,15 @@
 'use server'
 
-import { and, eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray, or, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { authorizeRole, type CurrentUser } from '@/lib/auth/session'
 import { db } from '@/lib/db'
+import { isProductCategory } from '@/lib/categories'
 import {
   couriers,
   coupons,
   modelColors,
+  modelSizes,
   models,
   orderExchanges,
   orderItems,
@@ -43,6 +45,12 @@ function imageUrl(value: unknown) {
   } catch {
     throw new UserError('رابط الصورة غير صالح')
   }
+}
+
+function imageUrls(value: unknown) {
+  if (value == null) return [] as string[]
+  if (!Array.isArray(value) || value.length > 20) throw new UserError('يمكن إضافة حتى 20 صورة إضافية لكل معرض')
+  return [...new Set(value.map((entry) => imageUrl(entry)).filter((entry): entry is string => Boolean(entry)))]
 }
 
 function amount(value: unknown) {
@@ -125,42 +133,137 @@ export async function setCouponActive(couponId: number, active: boolean) {
 
 export async function createModel(input: {
   name: string
+  category?: string
   sku?: string
   price: number
   cost: number
   imageUrl?: string | null
-  colors: { color: string; stock: number; imageUrl?: string | null }[]
+  galleryUrls?: string[]
+  colors: { color: string; stock?: number | null; imageUrl?: string | null; galleryUrls?: string[]; sizes?: { size: string; stock?: number | null }[] }[]
 }) {
   return run(async () => {
     const name = text(input.name)
     if (!name) throw new UserError('اسم الموديل مطلوب')
-    const colors = (input.colors ?? [])
-      .map((c) => ({ color: text(c.color, 60), stock: qty(c.stock, true), imageUrl: imageUrl(c.imageUrl) }))
-      .filter((c) => c.color)
+    const category = isProductCategory(input.category) ? input.category : 'تشكيلات أخرى'
+    const colors = (input.colors ?? []).map((c) => ({
+      color: text(c.color, 60),
+      stock: c.sizes?.length ? null : (c.stock == null ? null : qty(c.stock, true)),
+      imageUrl: imageUrl(c.imageUrl),
+      galleryUrls: imageUrls(c.galleryUrls),
+      sizes: (c.sizes ?? []).map((s) => ({ size: text(s.size, 40), stock: s.stock == null ? null : qty(s.stock, true) })),
+    })).filter((c) => c.color)
     if (colors.length === 0) throw new UserError('أضيفي لوناً واحداً على الأقل')
     const normalizedColors = colors.map((c) => c.color.normalize('NFKC').trim().toLowerCase())
-    if (new Set(normalizedColors).size !== colors.length) {
-      throw new UserError('يوجد لون مكرر حتى لو اختلفت طريقة كتابة الحروف')
+    if (new Set(normalizedColors).size !== colors.length) throw new UserError('يوجد لون مكرر')
+    for (const color of colors) {
+      const names = color.sizes.map((s) => s.size.normalize('NFKC').trim().toLowerCase())
+      if (color.sizes.some((s) => !s.size) || new Set(names).size !== names.length) throw new UserError('تأكدي من أسماء المقاسات وعدم تكرارها لكل لون')
+      if (color.sizes.length && color.stock !== null) throw new UserError('المقاسات والمخزون العام لا يجتمعان للون نفسه')
     }
     await db.transaction(async (tx) => {
-      const [model] = await tx
-        .insert(models)
-        .values({
-          name,
-          sku: text(input.sku, 60) || null,
-          price: amount(input.price),
-          cost: amount(input.cost),
-          imageUrl: imageUrl(input.imageUrl),
-        })
-        .returning({ id: models.id })
-      await tx.insert(modelColors).values(colors.map((c) => ({ ...c, modelId: model.id })))
+      const [model] = await tx.insert(models).values({
+        name, category, sku: text(input.sku, 60) || null, price: amount(input.price), cost: amount(input.cost),
+        imageUrl: imageUrl(input.imageUrl), galleryUrls: imageUrls(input.galleryUrls), isPublished: false,
+      }).returning({ id: models.id })
+      for (const color of colors) {
+        const [createdColor] = await tx.insert(modelColors).values({
+          modelId: model.id, color: color.color, stock: color.stock, imageUrl: color.imageUrl, galleryUrls: color.galleryUrls,
+        }).returning({ id: modelColors.id })
+        if (color.sizes.length) await tx.insert(modelSizes).values(color.sizes.map((s) => ({ modelColorId: createdColor.id, ...s })))
+      }
     })
+  })
+}
+
+export async function saveColorSizes(colorId: number, sizes: { size: string; stock: number | null }[]) {
+  return run(async () => {
+    const cid = id(colorId)
+    if (!Array.isArray(sizes) || sizes.length > 30) throw new UserError('قائمة المقاسات غير صالحة')
+    const normalized = sizes.map((s) => ({ size: text(s.size, 40), stock: s.stock == null ? null : qty(s.stock, true) }))
+    const keys = normalized.map((s) => s.size.normalize('NFKC').trim().toLowerCase())
+    if (normalized.some((s) => !s.size) || new Set(keys).size !== keys.length) throw new UserError('تأكدي من أسماء المقاسات وعدم تكرارها')
+    await db.transaction(async (tx) => {
+      const [color] = await tx.select().from(modelColors).where(eq(modelColors.id, cid)).for('update')
+      if (!color) throw new UserError('اللون غير موجود')
+      const existingSizes = await tx.select().from(modelSizes).where(eq(modelSizes.modelColorId, cid)).for('update')
+      if (normalized.length && color.stock !== null && color.stock > 0) {
+        if (normalized.some((s) => s.stock === null) || normalized.reduce((sum, s) => sum + (s.stock ?? 0), 0) !== color.stock) {
+          throw new UserError(`مخزون اللون الحالي ${color.stock} قطعة. وزّعي نفس الكمية على المقاسات قبل التحويل، أو صفّري المخزون أولاً.`)
+        }
+      }
+
+      const keyOf = (value: string) => value.normalize('NFKC').trim().toLowerCase()
+      const nextByKey = new Map(normalized.map((size) => [keyOf(size.size), size]))
+      const existingByKey = new Map(existingSizes.map((size) => [keyOf(size.size), size]))
+      const oldNames = existingSizes.map((size) => size.size)
+      const [usedItems, usedExchanges] = oldNames.length ? await Promise.all([
+        tx.select({ size: orderItems.size }).from(orderItems).where(and(
+          eq(orderItems.modelId, color.modelId),
+          eq(orderItems.color, color.color),
+          inArray(orderItems.size, oldNames),
+        )),
+        tx.select({ returnedSize: orderExchanges.returnedSize, newSize: orderExchanges.newSize }).from(orderExchanges).where(or(
+          and(
+            eq(orderExchanges.returnedModelId, color.modelId),
+            eq(orderExchanges.returnedColor, color.color),
+            inArray(orderExchanges.returnedSize, oldNames),
+          ),
+          and(
+            eq(orderExchanges.newModelId, color.modelId),
+            eq(orderExchanges.newColor, color.color),
+            inArray(orderExchanges.newSize, oldNames),
+          ),
+        )),
+      ]) : [[], []]
+      const historicallyUsed = new Set<string>([
+        ...usedItems.flatMap((item) => item.size ? [item.size] : []),
+        ...usedExchanges.flatMap((exchange) => [exchange.returnedSize, exchange.newSize].filter((size): size is string => Boolean(size))),
+      ])
+
+      for (const oldSize of existingSizes) {
+        const next = nextByKey.get(keyOf(oldSize.size))
+        if (next) {
+          if (next.size !== oldSize.size && historicallyUsed.has(oldSize.size)) {
+            throw new UserError(`لا يمكن تغيير كتابة المقاس ${oldSize.size} لأنه محفوظ في طلب سابق. اتركي الاسم كما هو للحفاظ على سجل الطلب.`)
+          }
+          await tx.update(modelSizes).set({ size: next.size, stock: next.stock }).where(eq(modelSizes.id, oldSize.id))
+          continue
+        }
+
+        if ((oldSize.stock ?? 0) > 0) throw new UserError(`صفّري مخزون المقاس ${oldSize.size} قبل حذفه حتى لا تضيع الكمية.`)
+        if (historicallyUsed.has(oldSize.size)) throw new UserError(`لا يمكن حذف مقاس ${oldSize.size} لأنه مرتبط بطلب سابق. اتركيه واجعلي مخزونه صفراً.`)
+        await tx.delete(modelSizes).where(eq(modelSizes.id, oldSize.id))
+      }
+
+      for (const size of normalized) {
+        if (existingByKey.has(keyOf(size.size))) continue
+        await tx.insert(modelSizes).values({ modelColorId: cid, ...size })
+      }
+      if (normalized.length) await tx.update(modelColors).set({ stock: null }).where(eq(modelColors.id, cid))
+    })
+  })
+}
+
+
+export async function setModelPublished(modelId: number, published: boolean) {
+  return run(async () => {
+    const mid = id(modelId)
+    if (typeof published !== 'boolean') throw new UserError('حالة النشر غير صالحة')
+    const [model] = await db.select({ id: models.id }).from(models).where(eq(models.id, mid)).limit(1)
+    if (!model) throw new UserError('الموديل غير موجود')
+    await db.update(models).set({ isPublished: published }).where(eq(models.id, mid))
+  })
+}
+
+export async function publishAllDrafts() {
+  return run(async () => {
+    await db.update(models).set({ isPublished: true }).where(eq(models.isPublished, false))
   })
 }
 
 export async function updateModel(
   modelId: number,
-  input: { name: string; sku?: string; price: number; cost: number; imageUrl?: string | null },
+  input: { name: string; category?: string; sku?: string; price: number; cost: number; imageUrl?: string | null },
 ) {
   return run(async () => {
     const name = text(input.name)
@@ -169,6 +272,7 @@ export async function updateModel(
       .update(models)
       .set({
         name,
+        category: isProductCategory(input.category) ? input.category : 'تشكيلات أخرى',
         sku: text(input.sku, 60) || null,
         price: amount(input.price),
         cost: amount(input.cost),
@@ -192,7 +296,7 @@ export async function deleteModel(modelId: number) {
   })
 }
 
-export async function addModelColor(modelId: number, color: string, stock: number, image?: string | null) {
+export async function addModelColor(modelId: number, color: string, stock: number | null, image?: string | null) {
   return run(async () => {
     const name = text(color, 60)
     if (!name) throw new UserError('اسم اللون مطلوب')
@@ -201,7 +305,7 @@ export async function addModelColor(modelId: number, color: string, stock: numbe
       sql`${modelColors.modelId} = ${mid} AND lower(btrim(${modelColors.color})) = lower(btrim(${name}))`,
     )
     if (existing.length) throw new UserError('هذا اللون موجود مسبقاً')
-    await db.insert(modelColors).values({ modelId: mid, color: name, stock: qty(stock, true), imageUrl: imageUrl(image) })
+    await db.insert(modelColors).values({ modelId: mid, color: name, stock: stock == null ? null : qty(stock, true), imageUrl: imageUrl(image) })
   })
 }
 
@@ -211,9 +315,27 @@ export async function updateModelColorImage(colorId: number, image: string | nul
   })
 }
 
-export async function setColorStock(colorId: number, stock: number) {
+
+export async function updateModelGallery(modelId: number, urls: string[]) {
   return run(async () => {
-    await db.update(modelColors).set({ stock: qty(stock, true) }).where(eq(modelColors.id, id(colorId)))
+    const mid = id(modelId)
+    await db.update(models).set({ galleryUrls: imageUrls(urls) }).where(eq(models.id, mid))
+  })
+}
+
+export async function updateModelColorGallery(colorId: number, urls: string[]) {
+  return run(async () => {
+    const cid = id(colorId)
+    await db.update(modelColors).set({ galleryUrls: imageUrls(urls) }).where(eq(modelColors.id, cid))
+  })
+}
+
+export async function setColorStock(colorId: number, stock: number | null) {
+  return run(async () => {
+    const cid = id(colorId)
+    const [size] = await db.select({ id: modelSizes.id }).from(modelSizes).where(eq(modelSizes.modelColorId, cid)).limit(1)
+    if (size) throw new UserError('هذا اللون يستخدم مقاسات؛ عدّلي كمية كل مقاس بدلاً من المخزون العام.')
+    await db.update(modelColors).set({ stock: stock == null ? null : qty(stock, true) }).where(eq(modelColors.id, cid))
   })
 }
 
@@ -245,11 +367,14 @@ type CourierInput = {
   active?: boolean
   integrationKey?: string
   apiEnabled?: boolean
+  sendOnOrderCreate?: boolean
 }
 
 function courierValues(input: CourierInput) {
   const name = text(input.name)
   if (!name) throw new UserError('اسم شركة التوصيل مطلوب')
+  const integrationKey = text(input.integrationKey, 50).toLowerCase().replace(/[^a-z0-9_-]/g, '') || null
+  const apiEnabled = input.apiEnabled ?? false
   return {
     name,
     phone: text(input.phone, 40) || null,
@@ -258,9 +383,9 @@ function courierValues(input: CourierInput) {
     feeArea67: amount(input.feeArea67),
     feeInside: amount(input.feeInside),
     active: input.active ?? true,
-    integrationKey: text(input.integrationKey, 50).toLowerCase().replace(/[^a-z0-9_-]/g, '') || null,
-    apiEnabled: input.apiEnabled ?? false,
-    sendOnOrderCreate: false,
+    integrationKey,
+    apiEnabled,
+    sendOnOrderCreate: Boolean(input.sendOnOrderCreate && apiEnabled && integrationKey === 'opost'),
   }
 }
 
@@ -310,13 +435,15 @@ export type OrderInput = {
   trackingNumber?: string
   notes?: string
   discount?: number
-  items: { modelId: number; color: string; quantity: number }[]
+  items: { modelId: number; color: string; size?: string; quantity: number }[]
   exchanges: {
     returnedModelId: number
     returnedColor: string
+    returnedSize?: string
     returnedQty: number
     newModelId: number
     newColor: string
+    newSize?: string
     newQty: number
   }[]
 }
@@ -324,39 +451,44 @@ export type OrderInput = {
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
 async function adjustOrderStock(tx: Tx, orderId: number, direction: 1 | -1) {
-  const [items, exchanges] = await Promise.all([
-    tx.select().from(orderItems).where(eq(orderItems.orderId, orderId)),
-    tx.select().from(orderExchanges).where(eq(orderExchanges.orderId, orderId)),
-  ])
-  const changes = new Map<string, { modelId: number; color: string; delta: number }>()
-  const add = (modelId: number | null, color: string | null, delta: number) => {
+  const items = await tx.select().from(orderItems).where(eq(orderItems.orderId, orderId))
+  const exchanges = await tx.select().from(orderExchanges).where(eq(orderExchanges.orderId, orderId))
+  const colorChanges = new Map<number, number>()
+  const sizeChanges = new Map<string, { colorId: number; size: string; delta: number }>()
+  const add = async (modelId: number | null, colorName: string | null, sizeName: string | null, delta: number) => {
     if (!modelId) return
-    if (!color) throw new UserError('لا يمكن تحديث المخزون لأن أحد أسطر الطلب لا يحتوي على لون محفوظ.')
-    const key = `${modelId}\u0000${color}`
-    const current = changes.get(key)
-    if (current) current.delta += delta
-    else changes.set(key, { modelId, color, delta })
-  }
-  for (const item of items) add(item.modelId, item.color, direction * item.quantity)
-  for (const exchange of exchanges) {
-    add(exchange.newModelId, exchange.newColor, direction * exchange.newQty)
-    add(exchange.returnedModelId, exchange.returnedColor, -direction * exchange.returnedQty)
-  }
-  for (const change of changes.values()) {
-    if (change.delta === 0) continue
-    const updated = await tx.update(modelColors)
-      .set({ stock: sql`${modelColors.stock} + ${change.delta}` })
-      .where(and(
-        eq(modelColors.modelId, change.modelId),
-        eq(modelColors.color, change.color),
-        sql`${modelColors.stock} >= ${Math.max(0, -change.delta)}`,
-      ))
-      .returning({ id: modelColors.id })
-    if (updated.length !== 1) {
-      throw new UserError(change.delta < 0
-        ? 'المخزون غير كافٍ لإعادة تفعيل الطلب. راجعي الكميات المتوفرة أولاً.'
-        : 'تعذر العثور على لون مرتبط بالطلب لإرجاعه إلى المخزون.')
+    if (!colorName) throw new UserError('لا يمكن تحديث المخزون لأن أحد أسطر الطلب لا يحتوي على لون محفوظ.')
+    const [color] = await tx.select().from(modelColors).where(and(eq(modelColors.modelId, modelId), eq(modelColors.color, colorName))).limit(1)
+    if (!color) throw new UserError('تعذر العثور على لون مرتبط بالطلب.')
+    if (sizeName) {
+      const [size] = await tx.select().from(modelSizes).where(and(eq(modelSizes.modelColorId, color.id), eq(modelSizes.size, sizeName))).limit(1)
+      if (!size) throw new UserError(`المقاس ${sizeName} لم يعد موجوداً في سجل المخزون.`)
+      if (size.stock === null) return
+      const key = `${color.id}\u0000${sizeName}`
+      const current = sizeChanges.get(key)
+      if (current) current.delta += delta
+      else sizeChanges.set(key, { colorId: color.id, size: sizeName, delta })
+    } else if (color.stock !== null) {
+      colorChanges.set(color.id, (colorChanges.get(color.id) ?? 0) + delta)
     }
+  }
+  for (const item of items) await add(item.modelId, item.color, item.size, direction * item.quantity)
+  for (const exchange of exchanges) {
+    await add(exchange.newModelId, exchange.newColor, exchange.newSize, direction * exchange.newQty)
+    await add(exchange.returnedModelId, exchange.returnedColor, exchange.returnedSize, -direction * exchange.returnedQty)
+  }
+  for (const [colorId, delta] of colorChanges) {
+    if (!delta) continue
+    const changed = await tx.update(modelColors).set({ stock: sql`${modelColors.stock} + ${delta}` })
+      .where(and(eq(modelColors.id, colorId), sql`${modelColors.stock} >= ${Math.max(0, -delta)}`)).returning({ id: modelColors.id })
+    if (!changed.length) throw new UserError(delta < 0 ? 'المخزون غير كافٍ لإعادة تفعيل الطلب.' : 'تعذر تحديث مخزون اللون.')
+  }
+  for (const change of sizeChanges.values()) {
+    if (!change.delta) continue
+    const changed = await tx.update(modelSizes).set({ stock: sql`${modelSizes.stock} + ${change.delta}` })
+      .where(and(eq(modelSizes.modelColorId, change.colorId), eq(modelSizes.size, change.size), sql`${modelSizes.stock} >= ${Math.max(0, -change.delta)}`))
+      .returning({ id: modelSizes.id })
+    if (!changed.length) throw new UserError(change.delta < 0 ? 'المخزون غير كافٍ للمقاس المحدد.' : 'تعذر تحديث مخزون المقاس.')
   }
 }
 
@@ -378,14 +510,17 @@ export async function createOrder(input: OrderInput) {
     const items = (input.items ?? []).map((i) => ({
       modelId: id(i.modelId),
       color: text(i.color, 60),
+      size: text(i.size, 40) || null,
       quantity: qty(i.quantity),
     }))
     const exchanges = (input.exchanges ?? []).map((e) => ({
       returnedModelId: id(e.returnedModelId),
       returnedColor: text(e.returnedColor, 60),
+      returnedSize: text(e.returnedSize, 40) || null,
       returnedQty: qty(e.returnedQty),
       newModelId: id(e.newModelId),
       newColor: text(e.newColor, 60),
+      newSize: text(e.newSize, 40) || null,
       newQty: qty(e.newQty),
     }))
     if (items.length + exchanges.length === 0) throw new UserError('أضيفي منتجاً واحداً على الأقل')
@@ -407,11 +542,11 @@ export async function createOrder(input: OrderInput) {
           ...exchanges.flatMap((e) => [e.returnedModelId, e.newModelId]),
         ]),
       ]
-      const [modelRows, colorRows, courierRows] = await Promise.all([
-        tx.select().from(models).where(inArray(models.id, modelIds)),
-        tx.select().from(modelColors).where(inArray(modelColors.modelId, modelIds)).for('update'),
-        courierId ? tx.select().from(couriers).where(eq(couriers.id, courierId)) : Promise.resolve([]),
-      ])
+      // Keep transaction queries sequential on the same PostgreSQL client.
+      const modelRows = await tx.select().from(models).where(inArray(models.id, modelIds))
+      const colorRows = await tx.select().from(modelColors).where(inArray(modelColors.modelId, modelIds)).for('update')
+      const sizeRows = await tx.select().from(modelSizes).where(inArray(modelSizes.modelColorId, colorRows.map((c) => c.id))).for('update')
+      const courierRows = courierId ? await tx.select().from(couriers).where(eq(couriers.id, courierId)) : []
       if (courierId && courierRows.length === 0) throw new UserError('شركة التوصيل غير موجودة')
       shouldAutoDispatch = Boolean(courierRows[0]?.active && courierRows[0]?.apiEnabled && courierRows[0]?.sendOnOrderCreate)
 
@@ -420,77 +555,79 @@ export async function createOrder(input: OrderInput) {
         if (!model) throw new UserError('أحد الموديلات غير موجود')
         return model
       }
-      const getColor = (mid: number, color: string, required: boolean) => {
-        const row = colorRows.find((c) => c.modelId === mid && c.color === color)
-        if (!row && required) throw new UserError(`اللون "${color || '—'}" غير متوفر لموديل ${getModel(mid).name}`)
-        return row
+      const getVariant = (mid: number, colorName: string, sizeName: string | null, required: boolean) => {
+        const color = colorRows.find((c) => c.modelId === mid && c.color === colorName)
+        if (!color && required) throw new UserError(`اللون "${colorName || '—'}" غير متوفر لموديل ${getModel(mid).name}`)
+        if (!color) return null
+        const sizes = sizeRows.filter((s) => s.modelColorId === color.id)
+        if (sizes.length && !sizeName) throw new UserError(`اختاري المقاس للون ${color.color} من ${getModel(mid).name}`)
+        if (!sizes.length && sizeName) throw new UserError(`هذا اللون لا يحتوي على مقاسات: ${getModel(mid).name} — ${color.color}`)
+        const size = sizeName ? sizes.find((s) => s.size === sizeName) : null
+        if (sizeName && !size) throw new UserError('المقاس المحدد غير موجود لهذا اللون')
+        return { color, size }
       }
 
-      const stockNeeded = new Map<number, number>()
-      const need = (colorId: number, delta: number) =>
-        stockNeeded.set(colorId, (stockNeeded.get(colorId) ?? 0) + delta)
+      const stockNeeds = new Map<string, { kind: 'color' | 'size'; id: number; needed: number }>()
+      const addNeed = (variant: NonNullable<ReturnType<typeof getVariant>>, delta: number) => {
+        if (variant.size) {
+          if (variant.size.stock === null) return
+          const key = `s:${variant.size.id}`
+          const current = stockNeeds.get(key)
+          stockNeeds.set(key, { kind: 'size', id: variant.size.id, needed: (current?.needed ?? 0) + delta })
+        } else if (variant.color.stock !== null) {
+          const key = `c:${variant.color.id}`
+          const current = stockNeeds.get(key)
+          stockNeeds.set(key, { kind: 'color', id: variant.color.id, needed: (current?.needed ?? 0) + delta })
+        }
+      }
 
       let itemsTotal = 0
       let costTotal = 0
-
       const itemRows = items.map((item) => {
         const model = getModel(item.modelId)
-        const color = getColor(item.modelId, item.color, true)!
-        need(color.id, item.quantity)
+        const variant = getVariant(item.modelId, item.color, item.size, true)!
+        addNeed(variant, item.quantity)
         itemsTotal += model.price * item.quantity
         costTotal += model.cost * item.quantity
-        return {
-          modelId: model.id,
-          modelName: model.name,
-          color: item.color,
-          quantity: item.quantity,
-          unitPrice: model.price,
-          unitCost: model.cost,
-        }
+        return { modelId: model.id, modelName: model.name, color: item.color, size: item.size, quantity: item.quantity, unitPrice: model.price, unitCost: model.cost }
       })
 
       let exchangeDiff = 0
       const exchangeRows = exchanges.map((ex) => {
         const returned = getModel(ex.returnedModelId)
         const replacement = getModel(ex.newModelId)
-        const newColor = getColor(ex.newModelId, ex.newColor, true)!
-        need(newColor.id, ex.newQty)
-        const returnedColor = getColor(ex.returnedModelId, ex.returnedColor, true)!
-        need(returnedColor.id, -ex.returnedQty)
+        const newVariant = getVariant(ex.newModelId, ex.newColor, ex.newSize, true)!
+        addNeed(newVariant, ex.newQty)
+        const returnedVariant = getVariant(ex.returnedModelId, ex.returnedColor, ex.returnedSize, true)!
+        addNeed(returnedVariant, -ex.returnedQty)
         const diff = replacement.price * ex.newQty - returned.price * ex.returnedQty
         exchangeDiff += diff
         costTotal += replacement.cost * ex.newQty - returned.cost * ex.returnedQty
         return {
-          returnedModelId: returned.id,
-          returnedName: returned.name,
-          returnedColor: ex.returnedColor || null,
-          returnedQty: ex.returnedQty,
-          returnedPrice: returned.price,
-          returnedCost: returned.cost,
-          newModelId: replacement.id,
-          newName: replacement.name,
-          newColor: ex.newColor,
-          newQty: ex.newQty,
-          newPrice: replacement.price,
-          newCost: replacement.cost,
-          diff,
+          returnedModelId: returned.id, returnedName: returned.name, returnedColor: ex.returnedColor || null,
+          returnedSize: ex.returnedSize, returnedQty: ex.returnedQty, returnedPrice: returned.price, returnedCost: returned.cost,
+          newModelId: replacement.id, newName: replacement.name, newColor: ex.newColor, newSize: ex.newSize,
+          newQty: ex.newQty, newPrice: replacement.price, newCost: replacement.cost, diff,
         }
       })
 
-      for (const [colorId, needed] of stockNeeded) {
-        const row = colorRows.find((c) => c.id === colorId)!
-        if (needed > 0 && row.stock < needed) {
-          const model = getModel(row.modelId)
-          throw new UserError(`المخزون غير كافٍ: ${model.name} (${row.color}) — المتوفر ${row.stock}`)
+      for (const need of stockNeeds.values()) {
+        if (need.needed <= 0) continue
+        const row = need.kind === 'size' ? sizeRows.find((s) => s.id === need.id)! : colorRows.find((c) => c.id === need.id)!
+        if ((row.stock ?? 0) < need.needed) {
+          const colorId = need.kind === 'size' ? sizeRows.find((s) => s.id === need.id)!.modelColorId : need.id
+          const parentColor = colorRows.find((c) => c.id === colorId)!
+          const model = getModel(parentColor.modelId)
+          throw new UserError(`المخزون غير كافٍ: ${model.name} (${parentColor.color}) — المتوفر ${row.stock ?? 0}`)
         }
       }
-
-      for (const [colorId, needed] of stockNeeded) {
-        if (needed === 0) continue
-        await tx
-          .update(modelColors)
-          .set({ stock: sql`${modelColors.stock} - ${needed}` })
-          .where(eq(modelColors.id, colorId))
+      for (const need of stockNeeds.values()) {
+        if (!need.needed) continue
+        if (need.kind === 'size') {
+          await tx.update(modelSizes).set({ stock: sql`${modelSizes.stock} - ${need.needed}` }).where(eq(modelSizes.id, need.id))
+        } else {
+          await tx.update(modelColors).set({ stock: sql`${modelColors.stock} - ${need.needed}` }).where(eq(modelColors.id, need.id))
+        }
       }
 
       const shippingFee = REGIONS[region].fee

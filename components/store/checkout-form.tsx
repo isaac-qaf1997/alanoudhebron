@@ -5,9 +5,10 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { checkStoreCoupon, submitStoreOrder } from '@/app/store-actions'
 import { CITY_REGIONS, REGIONS } from '@/lib/constants'
+import { OpostLocationFields } from '@/components/shipping/opost-location-fields'
 
-type Product = { id: number; name: string; price: number; colors: { color: string; stock: number }[] }
-type CartLine = { modelId: number; color: string; quantity: number }
+type Product = { id: number; name: string; price: number; colors: { color: string; stock: number | null; sizes: { size: string; stock: number | null }[] }[] }
+type CartLine = { modelId: number; color: string; size?: string; quantity: number }
 const KEY = 'alanoud-cart-v1'
 
 export default function CheckoutForm({ products }: { products: Product[] }) {
@@ -22,7 +23,7 @@ export default function CheckoutForm({ products }: { products: Product[] }) {
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null)
   const [couponMessage, setCouponMessage] = useState('')
   const [couponBusy, setCouponBusy] = useState(false)
-  const [form, setForm] = useState({ customerName: '', phone: '', city: '', area: '', region: 'west_bank', address: '', paymentMethod: 'cod' as 'cod' })
+  const [form, setForm] = useState({ customerName: '', phone: '', city: '', area: '', region: 'west_bank', address: '', paymentMethod: 'cod' as const })
   useEffect(() => {
     try { setItems(JSON.parse(localStorage.getItem(KEY) || '[]')) } catch { setItems([]) }
   }, [])
@@ -75,33 +76,38 @@ export default function CheckoutForm({ products }: { products: Product[] }) {
       setBusy(false)
     }
   }
-  if (done) return <section className="mx-auto max-w-xl rounded-3xl bg-white p-8 text-center shadow-sm"><div className="text-4xl">✓</div><h1 className="mt-4 text-2xl font-bold">تم استلام طلبك بنجاح</h1><p className="mt-3 leading-8 text-stone-600">رقم طلبك: <b>#{done}</b>. سنتواصل معك لتأكيد التفاصيل.</p><Link href="/shop" className="mt-6 inline-block rounded-full bg-[#765637] px-7 py-3 text-white">العودة للمتجر</Link></section>
-  if (!items.length) return <section className="rounded-2xl bg-white p-8 text-center"><p>سلتك فارغة.</p><Link className="mt-4 inline-block text-[#765637] underline" href="/shop">تصفحي المنتجات</Link></section>
-  return <form onSubmit={submit} className="grid gap-8 lg:grid-cols-[1fr_360px]">
-    <div className="space-y-5 rounded-3xl bg-white p-6">
+  if (done) return <section className="mx-auto max-w-xl rounded-3xl border border-[#8f6a39]/70 bg-[#1b140f] p-8 text-center shadow-sm"><div className="text-4xl">✓</div><h1 className="mt-4 text-2xl font-bold">تم استلام طلبك بنجاح</h1><p className="mt-3 leading-8 text-[#bca681]">رقم طلبك: <b>#{done}</b>. سنتواصل معك لتأكيد التفاصيل.</p><Link href="/shop" className="mt-6 inline-block rounded-full bg-gradient-to-b from-[#f5dfb6] to-[#c99b5c] px-7 py-3 font-bold text-[#1c140c]">العودة للمتجر</Link></section>
+  if (!items.length) return <section className="rounded-2xl border border-[#8f6a39]/70 bg-[#1b140f] p-8 text-center"><p>سلتك فارغة.</p><Link className="mt-4 inline-block text-[#765637] underline" href="/shop">تصفحي المنتجات</Link></section>
+  return <form onSubmit={submit} className="grid gap-8 text-[#f3dfbd] lg:grid-cols-[1fr_360px] [&_input:not([type=radio])]:border-[#765b3b] [&_input:not([type=radio])]:bg-[#100c09] [&_input:not([type=radio])]:text-[#f5e5ca]">
+    <div className="space-y-5 rounded-3xl border border-[#8f6a39]/70 bg-[#1b140f] p-5 sm:p-6">
       <h1 className="text-2xl font-bold">بيانات التوصيل</h1>
-      <label className="block text-sm">الاسم الكامل<input required maxLength={120} value={form.customerName} onChange={e=>update('customerName',e.target.value)} className="mt-2 w-full rounded-xl border p-3"/></label>
-      <label className="block text-sm">رقم الهاتف<input required type="tel" maxLength={30} value={form.phone} onChange={e=>update('phone',e.target.value)} className="mt-2 w-full rounded-xl border p-3"/></label>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block text-sm">المدينة<input required value={form.city} onChange={e=>update('city',e.target.value)} className="mt-2 w-full rounded-xl border p-3"/></label>
-        <label className="block text-sm">منطقة التوصيل<select value={form.region} onChange={e=>update('region',e.target.value)} className="mt-2 w-full rounded-xl border p-3"><option value="west_bank">الضفة الغربية</option><option value="jerusalem">القدس</option><option value="area_67">مناطق 67</option><option value="inside">مناطق الداخل</option></select></label>
-      </div>
-      <label className="block text-sm">المنطقة / الحي<input required maxLength={100} value={form.area} onChange={e=>update('area',e.target.value)} className="mt-2 w-full rounded-xl border p-3"/></label>
-      <label className="block text-sm">العنوان بالتفصيل<textarea required value={form.address} onChange={e=>update('address',e.target.value)} className="mt-2 w-full rounded-xl border p-3"/></label>
+      <label className="block text-sm">الاسم الكامل<input required maxLength={120} value={form.customerName} onChange={e=>update('customerName',e.target.value)} className="mt-2 w-full rounded-xl border border-[#765b3b] bg-[#100c09] p-3 text-[#f5e5ca]"/></label>
+      <label className="block text-sm">رقم الهاتف<input required type="tel" maxLength={30} value={form.phone} onChange={e=>update('phone',e.target.value)} className="mt-2 w-full rounded-xl border border-[#765b3b] bg-[#100c09] p-3 text-[#f5e5ca]"/></label>
+      <OpostLocationFields
+        city={form.city}
+        area={form.area}
+        onCityChange={value => update('city', value)}
+        onAreaChange={value => update('area', value)}
+      />
+      <label className="block text-sm">منطقة التوصيل<select value={form.region} onChange={e=>update('region',e.target.value)} className="mt-2 w-full rounded-xl border border-[#765b3b] bg-[#100c09] p-3 text-[#f5e5ca]"><option value="west_bank">الضفة الغربية</option><option value="jerusalem">القدس</option><option value="area_67">مناطق 67</option><option value="inside">مناطق الداخل</option></select></label>
+      <label className="block text-sm">العنوان بالتفصيل<textarea required value={form.address} onChange={e=>update('address',e.target.value)} className="mt-2 w-full rounded-xl border border-[#765b3b] bg-[#100c09] p-3 text-[#f5e5ca]"/></label>
       <section className="rounded-xl border p-4">
         <h2 className="font-semibold">عندك كود خصم؟</h2>
         <div className="mt-3 flex gap-2">
-          <input value={couponCode} onChange={e=>{setCouponCode(e.target.value.toUpperCase());setAppliedCoupon(null);setCouponMessage('')}} placeholder="أدخلي كود الخصم" maxLength={32} className="min-w-0 flex-1 rounded-lg border px-3 py-2 uppercase"/>
-          <button type="button" disabled={couponBusy || !couponCode.trim()} onClick={applyCoupon} className="rounded-lg bg-[#765637] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{couponBusy?'جارٍ التحقق...':'تطبيق'}</button>
+          <input value={couponCode} onChange={e=>{setCouponCode(e.target.value.toUpperCase());setAppliedCoupon(null);setCouponMessage('')}} placeholder="أدخلي كود الخصم" maxLength={32} className="min-w-0 flex-1 rounded-lg border border-[#765b3b] bg-[#100c09] px-3 py-2 uppercase text-[#f5e5ca]"/>
+          <button type="button" disabled={couponBusy || !couponCode.trim()} onClick={applyCoupon} className="rounded-lg bg-[#d0a66a] px-4 py-2 text-sm font-semibold text-[#1c140c] disabled:opacity-50">{couponBusy?'جارٍ التحقق...':'تطبيق'}</button>
         </div>
-        {couponMessage && <p role="status" className={`mt-2 text-sm ${appliedCoupon?'text-green-700':'text-red-700'}`}>{couponMessage}</p>}
+        {couponMessage && <p role="status" className={`mt-2 text-sm ${appliedCoupon?'text-emerald-300':'text-red-200'}`}>{couponMessage}</p>}
       </section>
-      <div className="rounded-xl border border-[#e9e2d7] bg-[#faf8f4] p-4 text-sm leading-7">بإتمام الطلب، يرجى الاطلاع على <Link href="/policies" className="font-semibold text-[#765637] underline underline-offset-4">سياسة التبديل والترجيع</Link>. طلب التبديل أو الإرجاع يُقدّم خلال 24 ساعة من استلام الطرد.</div>
+      <div className="rounded-xl border border-[#765b3b] bg-[#100c09] p-4 text-sm leading-7">بإتمام الطلب، يرجى الاطلاع على <Link href="/policies" className="font-semibold text-[#e2bc7e] underline underline-offset-4">سياسة التبديل والترجيع</Link>. طلب التبديل أو الإرجاع يُقدّم خلال 24 ساعة من استلام الطرد.</div>
       <h2 className="pt-3 text-lg font-bold">طريقة الدفع</h2>
-      <div className="rounded-xl border border-[#765637]/20 bg-[#faf8f4] p-4"><b>الدفع عند الاستلام</b><p className="mt-1 text-sm text-stone-500">ادفعي عند وصول الطلب.</p></div>
-      {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-      <button disabled={busy} className="w-full rounded-full bg-[#765637] px-6 py-4 font-bold text-white disabled:opacity-50">{busy?'جارٍ إرسال الطلب...':'تأكيد الطلب'}</button>
+      <div className="rounded-xl border border-[#765b3b] bg-[#100c09] p-4">
+        <p className="font-semibold">الدفع نقدًا عند الاستلام</p>
+        <p className="mt-1 text-sm text-[#bca681]">ادفعي قيمة طلبكِ لمندوب التوصيل عند استلام الطرد.</p>
+      </div>
+      {error && <p role="alert" className="rounded-xl border border-red-900/50 bg-red-950/40 p-3 text-sm text-red-200">{error}</p>}
+      <button disabled={busy} className="w-full rounded-full border border-[#f1d29b] bg-gradient-to-b from-[#f5dfb6] to-[#c99b5c] px-6 py-4 font-bold text-[#1c140c] disabled:opacity-50">{busy?'جارٍ إرسال الطلب...':'تأكيد الطلب'}</button>
     </div>
-    <aside className="h-fit rounded-3xl bg-white p-6"><h2 className="text-xl font-bold">ملخص الطلب</h2>{items.map((line,i)=>{const p=products.find(x=>x.id===line.modelId);return <div key={i} className="flex justify-between gap-3 border-b py-3 text-sm"><span>{p?.name} · {line.color} × {line.quantity}</span><b>{((p?.price||0)*line.quantity).toFixed(2)} ₪</b></div>})}<div className="flex justify-between pt-5 text-sm"><span>مجموع المنتجات</span><span>{itemsTotal.toFixed(2)} ₪</span></div><div className="mt-2 flex justify-between text-sm"><span>رسوم التوصيل ({REGIONS[form.region as keyof typeof REGIONS]?.label || "المنطقة المحددة"})</span><span>{shippingFee.toFixed(2)} ₪</span></div>{appliedCoupon && <div className="mt-2 flex justify-between text-sm text-green-700"><span>خصم الكود ({appliedCoupon.code})</span><span>−{appliedCoupon.discount.toFixed(2)} ₪</span></div>}<div className="mt-4 flex justify-between border-t pt-4 text-lg font-bold"><span>الإجمالي عند الاستلام</span><span>{orderTotal.toFixed(2)} ₪</span></div><p className="mt-2 text-xs leading-6 text-stone-500">رسوم التوصيل محسوبة حسب منطقة التوصيل المختارة، وقد نؤكد تفاصيل العنوان معك قبل الشحن.</p></aside>
+    <aside className="h-fit rounded-3xl border border-[#8f6a39]/70 bg-[#1b140f] p-5 sm:p-6"><h2 className="text-xl font-bold">ملخص الطلب</h2>{items.map((line,i)=>{const p=products.find(x=>x.id===line.modelId);return <div key={i} className="flex justify-between gap-3 border-b border-[#765b3b]/60 py-3 text-sm"><span>{p?.name} · {line.color}{line.size ? ' · ' + line.size : ''} × {line.quantity}</span><b>{((p?.price||0)*line.quantity).toFixed(2)} ₪</b></div>})}<div className="flex justify-between pt-5 text-sm"><span>مجموع المنتجات</span><span>{itemsTotal.toFixed(2)} ₪</span></div><div className="mt-2 flex justify-between text-sm"><span>رسوم التوصيل ({REGIONS[form.region as keyof typeof REGIONS]?.label || "المنطقة المحددة"})</span><span>{shippingFee.toFixed(2)} ₪</span></div>{appliedCoupon && <div className="mt-2 flex justify-between text-sm text-emerald-300"><span>خصم الكود ({appliedCoupon.code})</span><span>−{appliedCoupon.discount.toFixed(2)} ₪</span></div>}<div className="mt-4 flex justify-between border-t border-[#765b3b] pt-4 text-lg font-bold"><span>الإجمالي النهائي</span><span>{orderTotal.toFixed(2)} ₪</span></div><p className="mt-2 text-xs leading-6 text-[#bca681]">رسوم التوصيل محسوبة حسب منطقة التوصيل المختارة، وقد نؤكد تفاصيل العنوان معك قبل الشحن.</p></aside>
   </form>
 }

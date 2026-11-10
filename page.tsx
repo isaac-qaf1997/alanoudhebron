@@ -28,9 +28,9 @@ export default async function DashboardPage({
     getModels(),
   ])
   const stats = computeStats(orders, couriers)
-  const totalPieces = models.reduce((s, m) => s + m.colors.reduce((cs, c) => cs + c.stock, 0), 0)
+  const totalPieces = models.reduce((s, m) => s + m.colors.reduce((cs, c) => cs + (c.stock ?? 0), 0), 0)
   const lowStock = models.flatMap((m) =>
-    m.colors.filter((c) => c.stock <= 2).map((c) => ({ id: c.id, label: `${m.name} — ${c.color}`, stock: c.stock })),
+    m.colors.filter((c) => c.stock !== null && c.stock <= 2).map((c) => ({ id: c.id, label: `${m.name} — ${c.color}`, stock: c.stock })),
   )
 
   return (

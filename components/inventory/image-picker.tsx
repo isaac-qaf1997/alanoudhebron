@@ -3,6 +3,7 @@
 import { ImagePlus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
+import { cloudinaryImageUrl } from '@/lib/images'
 
 type ImagePickerProps = {
   title: string
@@ -12,7 +13,7 @@ type ImagePickerProps = {
   compact?: boolean
 }
 
-const MAX_FILE_SIZE = 4 * 1024 * 1024
+const MAX_SOURCE_SIZE = 25 * 1024 * 1024
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 export function ImagePicker({ title, imageUrl, file, onFileChange, compact = false }: ImagePickerProps) {
@@ -38,14 +39,14 @@ export function ImagePicker({ title, imageUrl, file, onFileChange, compact = fal
       setError('اختاري صورة بصيغة JPG أو PNG أو WebP')
       return
     }
-    if (selected.size > MAX_FILE_SIZE) {
-      setError('حجم الصورة أكبر من 4 ميغابايت')
+    if (selected.size > MAX_SOURCE_SIZE) {
+      setError('حجم الصورة أكبر من 25 ميغابايت')
       return
     }
     onFileChange(selected)
   }
 
-  const source = previewUrl || imageUrl || null
+  const source = previewUrl || cloudinaryImageUrl(imageUrl, compact ? 160 : 240)
 
   return (
     <div className={cn('flex min-w-0 items-center gap-3 rounded-lg border border-dashed border-border bg-muted/20 p-2', compact ? 'gap-2' : 'p-3')}>
@@ -53,7 +54,7 @@ export function ImagePicker({ title, imageUrl, file, onFileChange, compact = fal
         {source ? (
           // The source is a Cloudinary URL or a temporary local preview URL.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={source} alt={`معاينة ${title}`} className="h-full w-full object-cover" />
+          <img src={source} alt={`معاينة ${title}`} loading="lazy" decoding="async" className="h-full w-full object-cover" />
         ) : (
           <ImagePlus className={compact ? 'size-4' : 'size-6'} />
         )}
@@ -67,6 +68,7 @@ export function ImagePicker({ title, imageUrl, file, onFileChange, compact = fal
         </label>
         {file ? <span className="truncate text-[11px] text-muted-foreground">{file.name}</span> : null}
         {error ? <span role="alert" className="text-xs text-destructive">{error}</span> : null}
+        <span className="text-[10px] text-muted-foreground">سيتم ضغط الصورة تلقائياً قبل الرفع</span>
       </div>
     </div>
   )

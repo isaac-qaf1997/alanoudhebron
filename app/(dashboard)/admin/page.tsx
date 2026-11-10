@@ -30,10 +30,10 @@ export default async function DashboardPage({
     getModels(),
   ])
   const stats = computeStats(orders, couriers)
-  const totalPieces = models.reduce((s, m) => s + m.colors.reduce((cs, c) => cs + c.stock, 0), 0)
-  const lowStock = models.flatMap((m) =>
-    m.colors.filter((c) => c.stock <= 2).map((c) => ({ id: c.id, label: `${m.name} — ${c.color}`, stock: c.stock })),
-  )
+  const totalPieces = models.reduce((s, m) => s + m.colors.reduce((cs, color) => cs + (color.sizes.length ? color.sizes.reduce((n, size) => n + (size.stock ?? 0), 0) : (color.stock ?? 0)), 0), 0)
+  const lowStock = models.flatMap((m) => m.colors.flatMap((color) => color.sizes.length
+    ? color.sizes.filter((size) => size.stock !== null && size.stock <= 2).map((size) => ({ id: color.id * 1000 + size.id, label: `${m.name} — ${color.color} — ${size.size}`, stock: size.stock }))
+    : color.stock !== null && color.stock <= 2 ? [{ id: color.id, label: `${m.name} — ${color.color}`, stock: color.stock }] : []))
 
   return (
     <div className="flex flex-col gap-6">

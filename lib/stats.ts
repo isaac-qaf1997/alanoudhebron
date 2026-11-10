@@ -23,15 +23,13 @@ export function computeStats(orders: OrderFull[], couriers: CourierPublic[]) {
     const status = order.status as StatusKey
     statusCounts[status] = (statusCounts[status] ?? 0) + 1
     if (order.shippedAt) parcelsOut += 1
-    if (status !== 'cancelled' && status !== 'returned') sales += order.total
+    if (status === 'delivered') sales += order.total
     if (status !== 'cancelled') cityCounts.set(order.city, (cityCounts.get(order.city) ?? 0) + 1)
 
     if (status === 'delivered') {
       netProfit += order.total - order.costTotal - order.courierFee
       collected += order.total
       collectedFees += order.courierFee
-    } else if (status === 'returned') {
-      netProfit -= order.courierFee
     }
 
     const courier = order.courierId ? courierStats.get(order.courierId) : undefined
@@ -42,10 +40,8 @@ export function computeStats(orders: OrderFull[], couriers: CourierPublic[]) {
         courier.collected += order.total
         courier.fees += order.courierFee
       }
-      if (status === 'returned') {
-        courier.returned += 1
-        courier.fees += order.courierFee
-      }
+      if (status === 'returned') courier.returned += 1
+      // Returned parcels do not incur a courier fee for this store.
     }
   }
 

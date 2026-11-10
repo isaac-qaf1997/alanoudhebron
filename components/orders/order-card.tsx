@@ -67,6 +67,7 @@ export function OrderCard({ order, isAdmin }: { order: OrderDisplay; isAdmin: bo
             <span>
               {item.modelName}
               {item.color ? <span className="text-muted-foreground"> · {item.color}</span> : null}
+              {item.size ? <span className="text-muted-foreground"> · مقاس {item.size}</span> : null}
               <span className="text-muted-foreground"> × {item.quantity}</span>
             </span>
             <span className="tabular-nums text-muted-foreground">{formatMoney(item.unitPrice * item.quantity)}</span>
@@ -76,9 +77,9 @@ export function OrderCard({ order, isAdmin }: { order: OrderDisplay; isAdmin: bo
           <li key={ex.id} className="flex flex-wrap justify-between gap-2 rounded-lg bg-info/5 px-2 py-1.5 text-info">
             <span className="flex items-center gap-1.5">
               <ArrowLeftRight className="size-3.5" aria-hidden="true" />
-              {ex.returnedName} {ex.returnedColor ? `(${ex.returnedColor})` : ''} × {ex.returnedQty}
+              {ex.returnedName} {ex.returnedColor ? `(${ex.returnedColor})` : ''}{ex.returnedSize ? ` / ${ex.returnedSize}` : ''} × {ex.returnedQty}
               {' ← '}
-              {ex.newName} ({ex.newColor}) × {ex.newQty}
+              {ex.newName} ({ex.newColor}){ex.newSize ? ` / ${ex.newSize}` : ''} × {ex.newQty}
             </span>
             <span className="tabular-nums">
               {ex.diff >= 0 ? '+' : ''}

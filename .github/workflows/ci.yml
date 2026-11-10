@@ -5,6 +5,7 @@ on:
       - main
       - multi-courier-foundation
       - professional-storefront-entry
+      - preview-sizes-publish-inventory
   workflow_dispatch:
 
 permissions:

@@ -1,11 +1,13 @@
 import Link from 'next/link'
-import { asc, desc } from 'drizzle-orm'
-import { db } from '@/lib/db'
-import { models, modelColors } from '@/lib/db/schema'
+import Image from 'next/image'
+import { getCurrentUser } from '@/lib/auth/session'
+import { getStoreProducts } from '@/lib/queries'
+import { cloudinaryImageUrl } from '@/lib/images'
+import { ProductGrid } from '@/components/store/product-grid'
 
 export const metadata = {
-  title: 'العنود للزي شرعي | أثواب وعبايات وفساتين تطريز',
-  description: 'العنود للزي شرعي من الخليل: أثواب فلسطينية مطرزة، فساتين تطريز، عبايات ودشاديش.',
+  title: 'العنود للزي الشرعي | الخليل',
+  description: 'العنود للزي الشرعي من الخليل — أثواب فلسطينية وعبايات وفساتين مطرزة.',
 }
 
 const socialLinks = [
@@ -14,93 +16,155 @@ const socialLinks = [
   { href: 'https://wa.me/970569388780', label: 'واتساب', mark: 'واتساب' },
 ]
 
-function BrandMark() {
+const modelImages: Record<number, string> = {
+  0: 'https://res.cloudinary.com/genxurzp/image/upload/v1793931422/alanoud/inventory/image_dbfca2b9-2439-4dc2-8dd9-b0829f8d2b2c.jpg',
+  1: 'https://res.cloudinary.com/genxurzp/image/upload/v1794062248/alanoud/inventory/image_83fd64b8-73f5-480d-a29f-12b12e35f2ad.jpg',
+  2: 'https://res.cloudinary.com/genxurzp/image/upload/v1794179205/alanoud/inventory/image_a251fbcc-36f7-4779-a9f2-19fb2641076e.webp',
+  3: 'https://res.cloudinary.com/genxurzp/image/upload/v1794179072/alanoud/inventory/image_7a846c8a-2c20-4a21-8bce-2843d704e4f4.webp',
+  4: 'https://res.cloudinary.com/genxurzp/image/upload/v1794180954/alanoud/inventory/image_3f57d616-da2c-447a-ba58-2537da38432a.webp',
+}
+
+function PhotoTile({ cell, className = '', label, loading = 'lazy', width = 640 }: { cell: number; className?: string; label: string; loading?: 'eager' | 'lazy'; width?: number }) {
+  return <Image src={cloudinaryImageUrl(modelImages[cell], width) ?? modelImages[cell]} alt={label} width={width} height={Math.round(width * 1.22)} className={className + ' object-contain'} loading={loading} sizes={width >= 1200 ? '(max-width: 768px) 100vw, 50vw' : '(max-width: 640px) 50vw, 25vw'} />
+}
+
+function Logo() {
   return (
-    <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-[#c6a36d] bg-[#211d18] text-[#d9bd8b] shadow-[0_0_0_4px_rgba(198,163,109,.12)]" aria-hidden="true">
-      <svg viewBox="0 0 48 48" className="h-8 w-8" fill="none">
-        <path d="M24 4 29 15 40 10 35 21 46 24 35 29 40 40 29 35 24 46 19 35 8 40 13 29 2 24 13 19 8 8 19 13 24 4Z" stroke="currentColor" strokeWidth="1.2"/>
-        <path d="M24 13 29 19 35 24 29 29 24 35 19 29 13 24 19 19 24 13Z" stroke="currentColor" strokeWidth="1.2"/>
-        <circle cx="24" cy="24" r="3" fill="currentColor"/>
-      </svg>
-    </span>
+    <div aria-label="شعار العنود للزي الشرعي" role="img" className="flex h-[70px] w-[60px] shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#c5a46d] bg-[#120d09] shadow-[0_5px_20px_rgba(40,30,18,.25)] sm:h-[82px] sm:w-[70px]">
+      <Image src={cloudinaryImageUrl("https://res.cloudinary.com/genxurzp/image/upload/v1794181046/alanoud/inventory/image_ee910985-ebde-4d84-b448-11a4b3d04e76.webp", 180)!} alt="شعار العنود" width={180} height={180} className="h-full w-full object-contain p-1" />
+    </div>
   )
 }
 
-export default async function ShopPage() {
-  const [products, colors] = await Promise.all([
-    db.select({ id: models.id, name: models.name, price: models.price, imageUrl: models.imageUrl }).from(models).orderBy(desc(models.createdAt)),
-    db.select({ modelId: modelColors.modelId, color: modelColors.color, stock: modelColors.stock, imageUrl: modelColors.imageUrl }).from(modelColors).orderBy(asc(modelColors.id)),
-  ])
+export default async function ShopPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+  const params = await searchParams
+  const [userResult, productsResult] = await Promise.allSettled([getCurrentUser(), getStoreProducts()])
+  const currentUser = userResult.status === 'fulfilled' ? userResult.value : null
+  const products = productsResult.status === 'fulfilled' ? productsResult.value : []
   const available = products.map((product) => {
-    const variants = colors.filter((color) => color.modelId === product.id && color.stock > 0)
-    return { ...product, imageUrl: variants.find((v) => v.imageUrl)?.imageUrl || product.imageUrl, variants, stock: variants.reduce((sum, v) => sum + v.stock, 0) }
+    const variants = product.colors.filter((color) => color.sizes.length
+      ? color.sizes.some((size) => size.stock === null || size.stock > 0)
+      : color.stock === null || color.stock > 0)
+    return {
+      ...product,
+      imageUrl: cloudinaryImageUrl(variants.find((variant) => variant.imageUrl)?.imageUrl || product.imageUrl, 640),
+      variants,
+      stock: variants.reduce((sum, variant) => sum + (variant.sizes.length
+        ? variant.sizes.reduce((n, size) => n + (size.stock ?? 1), 0)
+        : (variant.stock ?? 1)), 0),
+    }
   }).filter((product) => product.stock > 0)
 
   return (
-    <main className="min-h-dvh bg-[#f7f2e9] text-[#29251f]" dir="rtl">
-      <header className="sticky top-0 z-20 border-b border-[#d9cbb5] bg-[#fbf8f2]/95 backdrop-blur">
-        <div className="mx-auto grid max-w-7xl grid-cols-3 items-center px-4 py-3 sm:px-6">
-          <nav className="flex items-center gap-3 text-xs text-[#62584c] sm:gap-5 sm:text-sm">
-            <Link href="/shop" className="transition hover:text-[#9b7745]">المتجر</Link>
-            <Link href="/cart" className="transition hover:text-[#9b7745]">السلة</Link>
+    <main dir="rtl" className="min-h-dvh overflow-hidden bg-[#100b08] text-[#f3dfbd]">
+      <div className="border-b border-[#8f6a39] bg-[#100c09] px-4 py-2 text-center text-[10px] tracking-wide text-[#e6d3ae] sm:text-xs">
+        العنود للزي الشرعي · الخليل <span className="mx-2 text-[#bd9b62]">✦</span> أناقة من روح التراث
+      </div>
+
+      <header className="sticky top-0 z-30 border-b border-[#8f6a39]/70 bg-[#17110d]/95 text-[#f1d8ae] backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-7">
+          <nav className="flex items-center gap-3 text-xs text-[#e2c89e] sm:gap-6 sm:text-sm">
+            <Link href="/shop" className="transition hover:text-[#a17b43]">الرئيسية</Link>
+            <a href="#collections" className="hidden transition hover:text-[#a17b43] sm:inline">تشكيلاتنا</a>
+            <a href="#products" className="transition hover:text-[#a17b43]">المنتجات</a>
+            {currentUser?.role === 'admin' ? <Link href="/admin" className="hidden transition hover:text-[#a17b43] sm:inline">الإدارة</Link> : null}
           </nav>
-          <Link href="/shop" aria-label="العنود للزي شرعي - الصفحة الرئيسية" className="text-center">
-            <span className="block text-xl font-bold tracking-wide text-[#211d18] sm:text-2xl">العنود</span>
-            <span className="mt-0.5 block text-[10px] font-semibold tracking-[0.12em] text-[#9a774b] sm:text-xs">للزي شرعي</span>
+
+          <Link href="/shop" aria-label="العنود للزي الشرعي" className="flex items-center gap-2.5">
+            <Logo />
+            <span className="leading-tight">
+              <span className="block text-base font-bold tracking-wide text-[#f1d8ae] sm:text-xl">العنود</span>
+              <span className="mt-1 block text-[9px] font-semibold tracking-[.12em] text-[#c9a36b] sm:text-[11px]">للزي الشرعي · الخليل</span>
+            </span>
           </Link>
-          <div className="flex items-center justify-end gap-1 text-[#8a6841] sm:gap-2">
-            {socialLinks.map(({ href, label, mark }) => <a key={label} href={href} target="_blank" rel="noreferrer" aria-label={label} title={label} className="rounded-full p-2 transition hover:bg-[#eee4d5]"><span className="text-sm font-bold">{mark}</span></a>)}
+
+          <div className="flex items-center gap-1.5 text-[#8c6a3d]">
+            <Link href="/cart" aria-label="السلة" className="rounded-full border border-[#8f6a39] p-2.5 text-[#f1d8ae] transition hover:bg-[#3b2a19]">♡</Link>
+            <a href="https://wa.me/970569388780" aria-label="واتساب" className="hidden rounded-full bg-[#c99b5c] px-4 py-2.5 text-xs font-semibold text-[#21170e] transition hover:bg-[#e4c38e] sm:inline-flex">تواصلي معنا</a>
           </div>
         </div>
       </header>
 
-      <section className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 sm:pt-8">
-        <div className="relative isolate grid min-h-[470px] overflow-hidden rounded-[1.8rem] border border-[#b99a68]/50 bg-[#211d18] text-[#fbf5e9] shadow-[0_20px_60px_rgba(48,36,22,.18)] md:grid-cols-[1.05fr_.95fr]">
-          <div aria-hidden="true" className="absolute inset-0 -z-10 opacity-30" style={{backgroundImage:'radial-gradient(circle at 15% 20%, rgba(196,158,96,.35), transparent 32%), radial-gradient(circle at 85% 80%, rgba(196,158,96,.2), transparent 35%)'}}/>
-          <div className="relative flex flex-col items-center justify-center px-6 py-12 text-center md:items-start md:px-12 md:text-right lg:px-16">
-            <BrandMark />
-            <p className="mt-5 text-[10px] font-semibold tracking-[.35em] text-[#d7b77e] sm:text-xs">ALANOUD HEBRON</p>
-            <h1 className="mt-4 max-w-xl text-3xl font-bold leading-[1.7] sm:text-4xl lg:text-5xl">أناقتكِ من تراثنا…<br/>وجمالكِ في تفاصيلنا</h1>
-            <p className="mt-4 max-w-lg text-sm leading-8 text-[#e6d9c5] sm:text-base">أثواب فلسطينية مطرّزة، فساتين تطريز، عبايات ودشاديش… أناقة تجمع بين الأصالة والعصرية.</p>
-            <a href="#products" className="mt-7 inline-flex min-h-12 items-center justify-center rounded-full border border-[#d7b77e] bg-[#c5a16b] px-9 py-3 text-sm font-bold text-[#211d18] transition hover:bg-[#dfc394]">تسوّقي الآن</a>
-            <div className="mt-7 flex flex-wrap justify-center gap-3 text-xs text-[#d7c6aa] md:justify-start sm:text-sm"><span>أثواب فلسطينية</span><span>✦</span><span>تطريز تراثي</span><span>✦</span><span>عبايات</span></div>
+      <section id="collections" className="relative mx-auto max-w-[1500px] overflow-hidden bg-[#100b08] px-2 pb-8 pt-3 text-[#f8e8c8] sm:px-5 sm:pt-5">
+        <div className="pointer-events-none absolute inset-0 opacity-25" style={{ backgroundImage: 'radial-gradient(ellipse at 12% 12%, #b88b4b 0, transparent 32%), radial-gradient(ellipse at 90% 85%, #9e6c32 0, transparent 28%)' }}/>
+        <div className="relative overflow-hidden rounded-[1.4rem] border border-[#bd9457]/70 bg-[#100d0b] shadow-[0_25px_80px_rgba(0,0,0,.45)] sm:rounded-[2rem]">
+          <div className="grid min-h-[620px] md:min-h-[690px] md:grid-cols-2">
+            <div className="relative order-2 min-h-[420px] overflow-hidden md:order-1 md:min-h-[690px]">
+              <PhotoTile cell={0} label="الموديل 001 من متجر العنود" loading="eager" width={1200} className="absolute inset-0 h-full w-full bg-cover bg-[center_22%]"/>
+              <div className="absolute inset-0 bg-gradient-to-t from-[#100b08]/80 via-transparent to-[#100b08]/10 md:bg-gradient-to-r md:from-transparent md:via-transparent md:to-[#100b08]/20"/>
+              <div className="absolute bottom-5 left-5 rounded-full border border-[#e2c28d]/70 bg-[#17100bd9] px-5 py-2 text-xs tracking-wide text-[#f4dfb8] backdrop-blur-sm sm:bottom-8 sm:left-8">تطريز فلسطيني أصيل</div>
+            </div>
+
+            <div className="relative order-1 flex min-h-[470px] flex-col items-center justify-center overflow-hidden px-5 py-9 text-center md:order-2 md:min-h-[690px] md:px-9 lg:px-14">
+              <div className="absolute inset-0 bg-cover bg-center opacity-45" style={{ backgroundImage: "linear-gradient(180deg, rgba(13,9,6,.3), rgba(13,9,6,.88)), url('https://commons.wikimedia.org/wiki/Special:FilePath/Ibrahimi_mosque_-Hebron.jpg')" }}/>
+              <div className="absolute inset-0 bg-gradient-to-b from-[#120d09]/20 via-[#120d09]/55 to-[#120d09]/95"/>
+              <div className="relative flex flex-col items-center">
+                <div className="mb-3 flex h-[118px] w-[118px] items-center justify-center overflow-hidden rounded-2xl border border-[#d5ad6b]/80 bg-[#100b08] shadow-[0_0_38px_rgba(205,163,94,.2)] sm:h-[140px] sm:w-[140px]"><Image src={cloudinaryImageUrl("https://res.cloudinary.com/genxurzp/image/upload/v1794181046/alanoud/inventory/image_ee910985-ebde-4d84-b448-11a4b3d04e76.webp", 280)!} alt="شعار العنود" width={280} height={280} className="h-full w-full object-contain p-2" /></div>
+                <p className="text-[2rem] font-semibold tracking-wide text-[#f2d29a] sm:text-4xl" style={{ fontFamily: 'Georgia, serif' }}>Al Anoud</p>
+                <h1 className="mt-2 text-2xl font-bold text-[#f8e3bd] sm:text-3xl">العنود للزي الشرعي</h1>
+                <div className="mt-4 flex w-full max-w-sm items-center gap-3 text-[#d9b475]">
+                  <span className="h-px flex-1 bg-gradient-to-l from-transparent to-[#c69b5a]"/>
+                  <span className="text-lg">✥ ❖ ✥</span>
+                  <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[#c69b5a]"/>
+                </div>
+                <p className="mt-5 text-lg leading-relaxed text-[#f4dfbd] sm:text-xl">أناقتكِ من تراثنا ..<br/>وجمالكِ في تفاصيلنا</p>
+                <div className="mt-4 text-3xl text-[#d7b477]">♡</div>
+              </div>
+            </div>
           </div>
-          <div className="relative flex min-h-[270px] items-center justify-center overflow-hidden border-t border-[#c7a36b]/20 bg-[radial-gradient(ellipse_at_center,rgba(173,135,79,.22),transparent_65%)] md:min-h-full md:border-r md:border-t-0">
-            <div aria-hidden="true" className="absolute inset-5 rounded-[48%] border border-[#c7a36b]/30 md:inset-10"/>
-            <div aria-hidden="true" className="absolute inset-10 rounded-[48%] border border-dashed border-[#c7a36b]/25 md:inset-16"/>
-            <svg viewBox="0 0 360 390" className="relative h-[290px] w-full max-w-[360px] sm:h-[350px]" fill="none" role="img" aria-label="زخرفة مستوحاة من التطريز الفلسطيني">
-              <path d="M180 25 202 70 250 50 230 98 278 120 230 142 250 190 202 170 180 215 158 170 110 190 130 142 82 120 130 98 110 50 158 70 180 25Z" stroke="#c9aa73" strokeWidth="2" opacity=".8"/>
-              <path d="M180 65 198 100 235 120 198 140 180 175 162 140 125 120 162 100 180 65Z" stroke="#e1c99e" strokeWidth="1.5"/>
-              <path d="M180 105 195 120 180 135 165 120 180 105Z" fill="#c9aa73"/>
-              <path d="M95 230 115 250 95 270 75 250 95 230ZM265 230 285 250 265 270 245 250 265 230Z" stroke="#c9aa73" strokeWidth="2"/>
-              <path d="M180 225V340M125 250H235M145 285H215M160 315H200" stroke="#c9aa73" strokeWidth="1.5" opacity=".65"/>
-              <path d="M180 235 205 260 180 285 155 260 180 235Z" stroke="#e1c99e" strokeWidth="2"/>
-              <path d="M180 285 200 305 180 325 160 305 180 285Z" stroke="#e1c99e" strokeWidth="2"/>
-              <circle cx="180" cy="120" r="55" stroke="#c9aa73" strokeDasharray="3 7" opacity=".6"/>
-            </svg>
-            <span className="absolute bottom-5 text-[10px] tracking-[.28em] text-[#c9aa73]">PALESTINIAN HERITAGE · HEBRON</span>
+
+          <div className="relative border-t border-[#c39a5d]/80 bg-[#15100d] px-3 pb-5 pt-6 sm:px-6 sm:pb-7">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-[#b58a4d]/10 to-transparent"/>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+              {[
+                { title: 'عبايات', cell: 2 },
+                { title: 'أثواب بناتي', cell: 3 },
+                { title: 'أثواب', cell: 4 },
+                { title: 'فستان تطريز', cell: 1 },
+              ].map((item) => (
+                <Link key={item.title} href={`/shop?category=${encodeURIComponent(item.title)}`} className="group relative overflow-hidden rounded-t-[48%] rounded-b-xl border border-[#d0a66a]/80 bg-[#201710] shadow-[0_7px_22px_rgba(0,0,0,.35)]">
+                  <PhotoTile cell={item.cell} label={item.title} loading="lazy" width={520} className="aspect-[.82] w-full bg-cover bg-center transition duration-500 group-hover:scale-[1.025]"/>
+                  <div className="relative mx-auto -mt-1 w-[90%] rounded-full border border-[#e6c58f] bg-gradient-to-b from-[#f2d8a7] to-[#c99c5d] px-2 py-2 text-center text-sm font-bold text-[#1c140c] shadow-lg sm:text-base">{item.title}</div>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <div className="relative border-t border-[#b88b50]/70 bg-[#100c09] px-4 pb-7 pt-5 text-center sm:px-8 sm:pt-7">
+            <div className="mx-auto flex max-w-2xl items-center justify-center gap-3 text-lg font-semibold text-[#f1d5a5] sm:text-xl">
+              <span className="text-3xl text-[#d9b77d]">♧</span>
+              <span>الدفع نقدًا عند الاستلام</span>
+            </div>
+            <p className="mt-2 text-xs text-[#c4ad8e]">توصيل إلى مختلف المناطق · معاينة القطعة عند الاستلام</p>
+            <a href="#products" className="mx-auto mt-6 inline-flex min-h-14 items-center justify-center gap-3 rounded-full border-2 border-[#f1d29b] bg-gradient-to-b from-[#f5dfb6] to-[#c99b5c] px-10 text-lg font-bold text-[#1c140c] shadow-[0_5px_0_#8e642f,0_12px_28px_rgba(0,0,0,.35)] transition hover:-translate-y-0.5 sm:text-xl">
+              <span>تسوّقي الآن</span><span className="text-2xl">🛒</span>
+            </a>
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+              <a href="https://www.instagram.com/alanoudhebron/" target="_blank" rel="noreferrer" aria-label="إنستغرام" className="flex min-w-[135px] items-center justify-center gap-2 rounded-xl border border-[#d1aa70] px-4 py-2.5 text-xs text-[#f4dfbd] transition hover:bg-[#3b2a19]"><span className="text-xl">◎</span><span><span className="block text-[9px]">تابعونا على</span><span className="font-semibold">Instagram</span></span></a>
+              <a href="https://www.facebook.com/Alanoudhebron/" target="_blank" rel="noreferrer" aria-label="فيسبوك" className="flex min-w-[135px] items-center justify-center gap-2 rounded-xl border border-[#d1aa70] px-4 py-2.5 text-xs text-[#f4dfbd] transition hover:bg-[#3b2a19]"><span className="text-2xl font-bold">f</span><span><span className="block text-[9px]">تابعونا على</span><span className="font-semibold">Facebook</span></span></a>
+              <a href="https://wa.me/970569388780" target="_blank" rel="noreferrer" aria-label="واتساب" className="flex min-w-[135px] items-center justify-center gap-2 rounded-xl border border-[#d1aa70] px-4 py-2.5 text-xs text-[#f4dfbd] transition hover:bg-[#3b2a19]"><span className="text-xl">◉</span><span><span className="block text-[9px]">تواصلوا معنا</span><span className="font-semibold">WhatsApp</span></span></a>
+            </div>
+            <div className="pointer-events-none absolute bottom-0 left-0 h-2 w-full bg-gradient-to-r from-transparent via-[#c39a5d] to-transparent opacity-70"/>
           </div>
         </div>
       </section>
 
-      <section id="products" className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
-        <div className="mb-7 flex items-end justify-between">
-          <div><p className="text-sm font-semibold text-[#9a774b]">اختاري إطلالتك</p><h2 className="mt-1 text-2xl font-bold text-[#30291f]">تشكيلتنا</h2></div>
-          <span className="text-sm text-[#766d62]">{available.length} منتج</span>
+      <section id="products" className="mx-auto max-w-7xl bg-[#100b08] px-4 py-10 text-[#f2dfbd] sm:px-7 sm:py-14">
+        <div className="mb-7 flex items-end justify-between border-b border-[#8f6a39] pb-4">
+          <div><p className="text-[10px] font-semibold tracking-[.22em] text-[#a17b48]">THE LATEST</p><h2 className="mt-2 text-2xl font-semibold text-[#f1d8ae]">تشكيلة العنود</h2></div>
+          <span className="text-xs text-[#c7aa7d]">{available.length} منتج</span>
         </div>
-        {available.length ? <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {available.map((product) => <Link key={product.id} href={`/products/${product.id}`} className="group overflow-hidden rounded-2xl border border-[#e4d8c7] bg-white transition hover:-translate-y-1 hover:shadow-lg">
-            <div className="aspect-[3/4] overflow-hidden bg-[#eee5d8]">{product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105"/> : <div className="flex h-full flex-col items-center justify-center gap-3 text-[#9a876c]"><span className="text-4xl">✦</span><span className="text-sm">أضيفي صورة المنتج</span></div>}</div>
-            <div className="p-4"><h3 className="font-semibold">{product.name}</h3><p className="mt-2 font-bold text-[#8a6841]">{product.price.toFixed(2)} ₪</p><p className="mt-1 text-xs text-[#8b8175]">{product.variants.length} ألوان متاحة</p></div>
-          </Link>)}
-        </div> : <div className="rounded-2xl border border-dashed border-[#cdbb9f] bg-white/80 p-12 text-center text-[#766d62]"><span className="mb-3 block text-3xl text-[#b08c58]">✦</span><p className="font-semibold text-[#514536]">قريباً… تشكيلتكِ الخاصة</p><p className="mt-2 text-sm">ستظهر منتجاتكِ هنا بعد إضافتها وتحديث مخزونها من لوحة الإدارة.</p></div>}
+        <ProductGrid products={available.map(({ id, name, category, price, imageUrl, variants }) => ({ id, name, category, price, imageUrl, variants: variants.map((variant) => ({ color: variant.color })) }))} initialCategory={typeof params.category === 'string' ? params.category : ''} />
       </section>
 
-      <footer className="border-t border-[#d9cbb5] bg-[#211d18] px-5 py-9 text-center text-sm text-[#d8c8ad]">
-        <BrandMark/>
-        <p className="mt-4 font-semibold text-[#e0c18a]">العنود للزي شرعي · الخليل</p>
-        <div className="mt-4 flex items-center justify-center gap-4">{socialLinks.map(({href,label,mark})=><a key={label} href={href} target="_blank" rel="noreferrer" aria-label={label} className="rounded-full border border-[#8f754f] p-2 text-[#e0c18a] transition hover:bg-[#3a3023]"><span className="text-sm font-bold">{mark}</span></a>)}</div>
-        <Link href="/policies" className="mt-4 inline-block text-[#e0c18a] underline underline-offset-4">سياسة التبديل والترجيع</Link>
+      <footer className="mt-8 bg-[#211d19] px-5 py-10 text-center text-sm text-[#e1d2b8]">
+        <div className="mx-auto flex max-w-7xl flex-col items-center">
+          <Logo/>
+          <p className="mt-4 text-base font-semibold text-[#e5c991]">العنود للزي الشرعي</p>
+          <p className="mt-1 text-xs text-[#b9aa91]">الخليل · فلسطين</p>
+          <div className="mt-5 flex items-center justify-center gap-3">{socialLinks.map(({ href, label, mark }) => <a key={label} href={href} target="_blank" rel="noreferrer" aria-label={label} className="rounded-full border border-[#796344] px-3 py-2 text-xs text-[#e5c991] transition hover:bg-[#383025]">{mark}</a>)}</div>
+          <Link href="/policies" className="mt-5 text-xs text-[#e5c991] underline underline-offset-4">سياسة التبديل والترجيع</Link>
+        </div>
       </footer>
     </main>
   )
