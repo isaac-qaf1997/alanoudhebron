@@ -197,7 +197,7 @@ async function hydrateOrders(rows: Order[]) {
       courierName: courierNames.get(order.courierId ?? -1) ?? null,
       carrierStatusLabel: latestShipping?.providerLabel ?? order.shippingProviderStatus,
       carrierStatusUpdatedAt: latestShipping?.occurredAt ?? latestShipping?.recordedAt ?? order.shippingSyncedAt,
-      carrierTrackingNumber: order.trackingNumber,
+      carrierTrackingNumber: order.trackingNumber || order.externalShipmentId,
     }
   })
 }
