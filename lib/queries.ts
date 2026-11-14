@@ -8,6 +8,7 @@ import {
   models,
   orderExchanges,
   orderItems,
+  orderShippingStatusHistory,
   orders,
   type Order,
   type CourierPublic,
@@ -162,17 +163,17 @@ export async function getCouriers(): Promise<CourierPublic[]> {
 async function hydrateOrders(rows: Order[]) {
   if (rows.length === 0) return []
   const ids = rows.map((r) => r.id)
-  const [items, exchanges, courierRows] = await Promise.all([
+  const [items, exchanges, courierRows, shippingHistory] = await Promise.all([
     db.select().from(orderItems).where(inArray(orderItems.orderId, ids)).orderBy(asc(orderItems.id)),
-    db
-      .select()
-      .from(orderExchanges)
-      .where(inArray(orderExchanges.orderId, ids))
-      .orderBy(asc(orderExchanges.id)),
+    db.select().from(orderExchanges).where(inArray(orderExchanges.orderId, ids)).orderBy(asc(orderExchanges.id)),
     getCouriers(),
+    db.select().from(orderShippingStatusHistory)
+      .where(inArray(orderShippingStatusHistory.orderId, ids))
+      .orderBy(desc(orderShippingStatusHistory.recordedAt), desc(orderShippingStatusHistory.id)),
   ])
   const itemsByOrder = new Map<number, typeof items>()
   const exchangesByOrder = new Map<number, typeof exchanges>()
+  const latestShippingByOrder = new Map<number, (typeof shippingHistory)[number]>()
   const courierNames = new Map(courierRows.map((courier) => [courier.id, courier.name]))
   for (const item of items) {
     const list = itemsByOrder.get(item.orderId) ?? []
@@ -184,12 +185,21 @@ async function hydrateOrders(rows: Order[]) {
     list.push(exchange)
     exchangesByOrder.set(exchange.orderId, list)
   }
-  return rows.map((order) => ({
-    ...order,
-    items: itemsByOrder.get(order.id) ?? [],
-    exchanges: exchangesByOrder.get(order.id) ?? [],
-    courierName: courierNames.get(order.courierId ?? -1) ?? null,
-  }))
+  for (const event of shippingHistory) {
+    if (!latestShippingByOrder.has(event.orderId)) latestShippingByOrder.set(event.orderId, event)
+  }
+  return rows.map((order) => {
+    const latestShipping = latestShippingByOrder.get(order.id)
+    return {
+      ...order,
+      items: itemsByOrder.get(order.id) ?? [],
+      exchanges: exchangesByOrder.get(order.id) ?? [],
+      courierName: courierNames.get(order.courierId ?? -1) ?? null,
+      carrierStatusLabel: latestShipping?.providerLabel ?? order.shippingProviderStatus,
+      carrierStatusUpdatedAt: latestShipping?.occurredAt ?? latestShipping?.recordedAt ?? order.shippingSyncedAt,
+      carrierTrackingNumber: order.trackingNumber,
+    }
+  })
 }
 
 export type OrderFull = Awaited<ReturnType<typeof hydrateOrders>>[number]
