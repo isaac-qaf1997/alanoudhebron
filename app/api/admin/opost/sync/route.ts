@@ -247,7 +247,7 @@ async function synchronize(token: string) {
           syncStatus: current.syncStatus === 'sent' ? 'synced' : current.syncStatus,
           lastSyncedAt: now,
         }).where(eq(orders.id, current.id))
-        if (statusChanged || inserted) unchanged += 1
+        if (statusChanged) unchanged += 1
       }
     })
   }
