@@ -104,10 +104,12 @@ function shipmentDetails(row: ApiRecord) {
 }
 
 function orderStatusFor(providerStatus: string): StatusKey | null {
-  if (['picked_up', 'out_for_delivery', 'in_transit', 'shipped'].includes(providerStatus)) return 'shipped'
-  if (['delivered', 'completed'].includes(providerStatus)) return 'delivered'
-  if (['returned', 'return_to_sender', 'returned_to_sender'].includes(providerStatus)) return 'returned'
-  if (['cancelled', 'canceled'].includes(providerStatus)) return 'cancelled'
+  const status = providerStatus.trim().toLowerCase().replace(/[\\s-]+/g, '_')
+  if (['picked_up', 'out_for_delivery', 'in_transit', 'shipped', 'قيد_التوصيل', 'قيد_الوصول', 'في_الطريق'].includes(status)) return 'shipped'
+  // Opost's COD collection event confirms the parcel hand-off to the customer.
+  if (['delivered', 'completed', 'received', 'cod_pickup', 'cod_collected', 'collected', 'تم_التحصيل', 'تم_التسليم', 'تم_التوصيل'].includes(status)) return 'delivered'
+  if (['returned', 'return', 'rejected', 'return_to_sender', 'returned_to_sender', 'تم_الإرجاع', 'تم_الارجاع', 'مرتجع', 'راجع'].includes(status)) return 'returned'
+  if (['cancelled', 'canceled', 'ملغي', 'ملغى'].includes(status)) return 'cancelled'
   return null
 }
 
@@ -185,8 +187,6 @@ async function synchronize(token: string) {
   for (const order of linkedOrders) {
     const detail = matched.get(order.id)
     if (!detail) continue
-    const incoming = orderStatusFor(detail.status)
-    const nextStatus = incoming && canApply(order.status, incoming) ? incoming : null
     const statusChanged = order.shippingProviderStatus !== detail.status
     const now = new Date()
     const eventIdentity = detail.eventId || `${detail.shipmentId}|${detail.tracking}|${detail.status}|${detail.occurred}|${detail.label}`
@@ -195,7 +195,19 @@ async function synchronize(token: string) {
     await db.transaction(async tx => {
       const [current] = await tx.select().from(orders).where(eq(orders.id, order.id)).for('update')
       if (!current) return
-      const [inserted] = await tx.insert(orderShippingStatusHistory).values({
+      // A previously collected COD event proves delivery even if Opost's latest state is now "closed".
+      const [collectedEvent] = await tx.select({ id: orderShippingStatusHistory.id })
+        .from(orderShippingStatusHistory)
+        .where(and(
+          eq(orderShippingStatusHistory.orderId, current.id),
+          eq(orderShippingStatusHistory.providerKey, 'opost'),
+          eq(orderShippingStatusHistory.providerStatus, 'cod_pickup'),
+        ))
+        .limit(1)
+      const incoming = orderStatusFor(detail.status) ?? (detail.status === 'closed' && collectedEvent ? 'delivered' : null)
+      const nextStatus = incoming && canApply(current.status, incoming) ? incoming : null
+
+      await tx.insert(orderShippingStatusHistory).values({
         orderId: current.id,
         providerKey: 'opost',
         providerStatus: detail.status,
@@ -204,17 +216,20 @@ async function synchronize(token: string) {
         source: 'poll',
         externalEventId,
         occurredAt: detail.occurred && !Number.isNaN(Date.parse(detail.occurred)) ? new Date(detail.occurred) : null,
-      }).onConflictDoNothing().returning({ id: orderShippingStatusHistory.id })
+      }).onConflictDoNothing()
 
       const wasInactive = INACTIVE_STATUSES.includes(current.status as StatusKey)
       const becomesInactive = Boolean(nextStatus && INACTIVE_STATUSES.includes(nextStatus))
-      if (inserted && nextStatus && nextStatus !== current.status) {
+      if (nextStatus && nextStatus !== current.status) {
         if (!wasInactive && becomesInactive) await restoreStock(tx, current.id)
         const leftWarehouse = nextStatus === 'shipped' || nextStatus === 'delivered' || nextStatus === 'returned'
         await tx.update(orders).set({
           status: nextStatus,
+          trackingNumber: detail.tracking || current.trackingNumber,
           shippedAt: leftWarehouse ? current.shippedAt ?? now : current.shippedAt,
-          deliveredAt: nextStatus === 'delivered' ? current.deliveredAt ?? now : null,
+          deliveredAt: nextStatus === 'delivered'
+            ? current.deliveredAt ?? (detail.occurred && !Number.isNaN(Date.parse(detail.occurred)) ? new Date(detail.occurred) : now)
+            : current.deliveredAt,
           shippingProviderStatus: detail.status,
           shippingSyncedAt: now,
           shippingError: null,
@@ -225,6 +240,7 @@ async function synchronize(token: string) {
         changed += 1
       } else {
         await tx.update(orders).set({
+          trackingNumber: detail.tracking || current.trackingNumber,
           shippingProviderStatus: detail.status,
           shippingSyncedAt: now,
           shippingError: null,
