@@ -5,7 +5,7 @@ export type OrderDisplay = Pick<
   | 'id' | 'customerName' | 'phone' | 'region' | 'city' | 'area' | 'address'
   | 'trackingNumber' | 'status' | 'shippingFee' | 'discount' | 'couponCode' | 'notes'
   | 'shippedAt' | 'deliveredAt' | 'createdAt' | 'total'
-  | 'syncError' | 'courierName'
+  | 'syncError' | 'courierName' | 'carrierStatusLabel' | 'carrierStatusUpdatedAt' | 'carrierTrackingNumber'
 > & {
   items: Pick<OrderFull['items'][number], 'id' | 'modelName' | 'color' | 'size' | 'quantity' | 'unitPrice'>[]
   exchanges: Pick<OrderFull['exchanges'][number], 'id' | 'returnedName' | 'returnedColor' | 'returnedSize' | 'returnedQty' | 'newName' | 'newColor' | 'newSize' | 'newQty' | 'diff'>[]
@@ -20,6 +20,9 @@ export function toOrderDisplay(order: OrderFull): OrderDisplay {
     shippedAt: order.shippedAt, deliveredAt: order.deliveredAt,
     createdAt: order.createdAt, total: order.total,
     syncError: order.syncError, courierName: order.courierName,
+    carrierStatusLabel: order.carrierStatusLabel,
+    carrierStatusUpdatedAt: order.carrierStatusUpdatedAt,
+    carrierTrackingNumber: order.carrierTrackingNumber,
     items: order.items.map(({ id, modelName, color, size, quantity, unitPrice }) => ({ id, modelName, color, size, quantity, unitPrice })),
     exchanges: order.exchanges.map(({ id, returnedName, returnedColor, returnedSize, returnedQty, newName, newColor, newSize, newQty, diff }) => ({ id, returnedName, returnedColor, returnedSize, returnedQty, newName, newColor, newSize, newQty, diff })),
   }
