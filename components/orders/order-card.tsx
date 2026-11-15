@@ -93,8 +93,14 @@ export function OrderCard({ order, isAdmin }: { order: OrderDisplay; isAdmin: bo
         <div className="flex flex-col text-xs text-muted-foreground">
           <span>
             {order.courierName ?? 'بدون شركة توصيل'}
-            {order.trackingNumber ? ` · ${order.trackingNumber}` : ''}
+            {order.carrierTrackingNumber ? ` · رقم التتبع: ${order.carrierTrackingNumber}` : ''}
           </span>
+          {order.carrierStatusLabel ? (
+            <span className="font-medium text-foreground">
+              حالة الشركة: {order.carrierStatusLabel}
+              {order.carrierStatusUpdatedAt ? ` · ${formatDateTime(order.carrierStatusUpdatedAt)}` : ''}
+            </span>
+          ) : null}
           <span>
             توصيل {formatMoney(order.shippingFee)}
             {order.discount > 0 ? ` · خصم ${formatMoney(order.discount)}` : ''}
