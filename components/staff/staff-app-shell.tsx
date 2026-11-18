@@ -19,7 +19,7 @@ export function StaffAppShell({ user, children }: Props) {
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/staff-sw.js').catch((error) => {
+      navigator.serviceWorker.register('/staff-sw.js', { scope: '/staff/' }).catch((error) => {
         console.error('[staff:pwa]', error)
       })
     }
