@@ -8,8 +8,8 @@ const slides = [
   {
     image: 'https://res.cloudinary.com/genxurzp/image/upload/v1793931422/alanoud/inventory/image_dbfca2b9-2439-4dc2-8dd9-b0829f8d2b2c.jpg',
     alt: 'إطلالة مطرزة من تشكيلة العنود',
-    eyebrow: 'أناقة تحكي حكاية',
-    title: 'من التراث ... نستلم الجمال',
+    eyebrow: 'من التراث ... نستمد الجمال',
+    title: 'أناقة تحكي حكاية',
     description: 'تطريز فلسطيني أصيل وتفاصيل صنعت لتبقى',
     action: 'تسوّقي الآن',
   },
