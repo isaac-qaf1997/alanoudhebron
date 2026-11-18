@@ -33,9 +33,12 @@ export function StaffAppShell({ user, children }: Props) {
             <span className="flex size-10 items-center justify-center rounded-xl bg-[#35291d] text-lg font-bold text-[#e4c38e]">ع</span>
             <span><strong className="block text-sm text-[#35291d]">العنود</strong><span className="text-[11px] text-[#897b68]">تطبيق العمل الداخلي</span></span>
           </Link>
-          <div className="text-left">
-            <p className="text-xs font-semibold">{user.username}</p>
-            <p className="text-[10px] text-[#897b68]">{user.role === 'admin' ? 'مدير' : 'موظف'}</p>
+          <div className="flex items-center gap-3">
+            {user.role === 'admin' ? <Link href="/admin" className="rounded-full border border-[#c6a574] px-3 py-2 text-[11px] font-semibold text-[#76562d]">لوحة الإدارة</Link> : null}
+            <div className="text-left">
+              <p className="text-xs font-semibold">{user.username}</p>
+              <p className="text-[10px] text-[#897b68]">{user.role === 'admin' ? 'مدير' : 'موظف'}</p>
+            </div>
           </div>
         </div>
       </header>
