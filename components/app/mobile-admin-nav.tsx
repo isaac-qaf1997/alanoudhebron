@@ -21,7 +21,7 @@ export function MobileAdminNav() {
           const active = href === '/admin' ? pathname === href : pathname.startsWith(href)
           return (
             <li key={href}>
-              <Link href={href} prefetch={false} aria-current={active ? 'page' : undefined} className={`flex min-h-[62px] flex-col items-center justify-center gap-1 px-1 text-[10px] font-semibold transition-colors ${active ? 'text-[#91672f]' : 'text-[#8d8376]'}`}>
+              <Link href={href} aria-current={active ? 'page' : undefined} className={`flex min-h-[62px] flex-col items-center justify-center gap-1 px-1 text-[10px] font-semibold transition-colors ${active ? 'text-[#91672f]' : 'text-[#8d8376]'}`}>
                 <Icon className="size-5" strokeWidth={active ? 2.4 : 1.8} />
                 {label}
               </Link>
