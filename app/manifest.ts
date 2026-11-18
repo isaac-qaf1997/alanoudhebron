@@ -15,7 +15,7 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: '#f8f6f1',
     theme_color: '#17130f',
     icons: [
-      { src: '/alanoud-app-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }
+      { src: '/alanoud-app-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' }
     ],
     categories: ['business', 'productivity']
   }
