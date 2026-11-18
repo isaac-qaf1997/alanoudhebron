@@ -25,7 +25,7 @@ export function AppHeader({ user, activeCouriers }: { user: CurrentUser; activeC
   return (
     <header className="border-b border-border bg-background/95">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 pt-4 md:px-6">
-        <Link prefetch={false} href={user.role === 'admin' ? '/admin' : '/orders'} className="flex items-center gap-3">
+        <Link href={user.role === 'admin' ? '/admin' : '/orders'} className="flex items-center gap-3">
           <span
             className="flex size-11 items-center justify-center rounded-full border border-primary/40 bg-primary/5 text-lg font-bold text-primary"
             aria-hidden="true"
@@ -38,7 +38,7 @@ export function AppHeader({ user, activeCouriers }: { user: CurrentUser; activeC
           </span>
         </Link>
         {user.role === 'admin' ? <Link
-          prefetch={false}
+         
           href="/shipping"
           className="flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
         >
@@ -58,7 +58,7 @@ export function AppHeader({ user, activeCouriers }: { user: CurrentUser; activeC
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  prefetch={false}
+                 
                   aria-current={active ? 'page' : undefined}
                   className={cn(
                     'flex items-center gap-2 border-b-2 px-4 py-3 text-sm transition-colors',
