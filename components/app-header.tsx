@@ -25,7 +25,7 @@ export function AppHeader({ user, activeCouriers }: { user: CurrentUser; activeC
   return (
     <header className="border-b border-border bg-background/95">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 pt-4 md:px-6">
-        <Link href={user.role === 'admin' ? '/admin' : '/orders'} className="flex items-center gap-3">
+        <Link prefetch={false} href={user.role === 'admin' ? '/admin' : '/orders'} className="flex items-center gap-3">
           <span
             className="flex size-11 items-center justify-center rounded-full border border-primary/40 bg-primary/5 text-lg font-bold text-primary"
             aria-hidden="true"
