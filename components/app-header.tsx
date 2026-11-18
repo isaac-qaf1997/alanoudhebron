@@ -38,6 +38,7 @@ export function AppHeader({ user, activeCouriers }: { user: CurrentUser; activeC
           </span>
         </Link>
         {user.role === 'admin' ? <Link
+          prefetch={false}
           href="/shipping"
           className="flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
         >
