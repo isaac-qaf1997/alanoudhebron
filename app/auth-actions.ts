@@ -47,7 +47,7 @@ export async function loginAction(_previous: AuthFormState, formData: FormData):
       }).where(eq(users.id, user.id))
       return { error: 'اسم المستخدم أو كلمة المرور غير صحيحة' }
     }
-    destination = user.role === 'staff' ? '/orders' : '/admin'
+    destination = user.role === 'staff' ? '/staff' : '/admin'
     await db.update(users).set({ lastLoginAt: now, failedLoginAttempts: 0, lockedUntil: null }).where(eq(users.id, user.id))
     await setSession(user.id)
   } catch (error) {
