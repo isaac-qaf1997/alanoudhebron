@@ -88,14 +88,14 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       <section id="collections" className="relative mx-auto max-w-[1500px] overflow-hidden bg-[#100b08] px-2 pb-8 pt-3 text-[#f8e8c8] sm:px-5 sm:pt-5">
         <div className="pointer-events-none absolute inset-0 opacity-25" style={{ backgroundImage: 'radial-gradient(ellipse at 12% 12%, #b88b4b 0, transparent 32%), radial-gradient(ellipse at 90% 85%, #9e6c32 0, transparent 28%)' }}/>
         <div className="relative overflow-hidden rounded-[1.4rem] border border-[#bd9457]/70 bg-[#100d0b] shadow-[0_25px_80px_rgba(0,0,0,.45)] sm:rounded-[2rem]">
-          <div className="grid min-h-[620px] md:min-h-[690px] md:grid-cols-2">
-            <div className="relative order-2 min-h-[420px] overflow-hidden md:order-1 md:min-h-[690px]">
+          <div className="grid min-h-[520px] md:min-h-[690px] md:grid-cols-2">
+            <div className="relative order-2 min-h-[340px] overflow-hidden md:order-1 md:min-h-[690px]">
               <PhotoTile cell={0} label="الموديل 001 من متجر العنود" loading="eager" width={1200} className="absolute inset-0 h-full w-full bg-cover bg-[center_22%]"/>
               <div className="absolute inset-0 bg-gradient-to-t from-[#100b08]/80 via-transparent to-[#100b08]/10 md:bg-gradient-to-r md:from-transparent md:via-transparent md:to-[#100b08]/20"/>
               <div className="absolute bottom-5 left-5 rounded-full border border-[#e2c28d]/70 bg-[#17100bd9] px-5 py-2 text-xs tracking-wide text-[#f4dfb8] backdrop-blur-sm sm:bottom-8 sm:left-8">تطريز فلسطيني أصيل</div>
             </div>
 
-            <div className="relative order-1 flex min-h-[470px] flex-col items-center justify-center overflow-hidden px-5 py-9 text-center md:order-2 md:min-h-[690px] md:px-9 lg:px-14">
+            <div className="relative order-1 flex min-h-[390px] flex-col items-center justify-center overflow-hidden px-5 py-9 text-center md:order-2 md:min-h-[690px] md:px-9 lg:px-14">
               <div className="absolute inset-0 bg-cover bg-center opacity-45" style={{ backgroundImage: "linear-gradient(180deg, rgba(13,9,6,.3), rgba(13,9,6,.88)), url('https://commons.wikimedia.org/wiki/Special:FilePath/Ibrahimi_mosque_-Hebron.jpg')" }}/>
               <div className="absolute inset-0 bg-gradient-to-b from-[#120d09]/20 via-[#120d09]/55 to-[#120d09]/95"/>
               <div className="relative flex flex-col items-center">
