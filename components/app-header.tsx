@@ -57,6 +57,7 @@ export function AppHeader({ user, activeCouriers }: { user: CurrentUser; activeC
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  prefetch={false}
                   aria-current={active ? 'page' : undefined}
                   className={cn(
                     'flex items-center gap-2 border-b-2 px-4 py-3 text-sm transition-colors',
