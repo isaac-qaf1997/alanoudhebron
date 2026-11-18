@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth/session'
 import { getStoreProducts } from '@/lib/queries'
 import { cloudinaryImageUrl } from '@/lib/images'
 import { ProductGrid } from '@/components/store/product-grid'
+import { StorefrontHero } from '@/components/store/storefront-hero'
 
 export const metadata = {
   title: 'العنود للزي الشرعي | الخليل',
@@ -15,18 +16,6 @@ const socialLinks = [
   { href: 'https://www.instagram.com/alanoudhebron/', label: 'إنستغرام', mark: '◎' },
   { href: 'https://wa.me/970569388780', label: 'واتساب', mark: 'واتساب' },
 ]
-
-const modelImages: Record<number, string> = {
-  0: 'https://res.cloudinary.com/genxurzp/image/upload/v1793931422/alanoud/inventory/image_dbfca2b9-2439-4dc2-8dd9-b0829f8d2b2c.jpg',
-  1: 'https://res.cloudinary.com/genxurzp/image/upload/v1794062248/alanoud/inventory/image_83fd64b8-73f5-480d-a29f-12b12e35f2ad.jpg',
-  2: 'https://res.cloudinary.com/genxurzp/image/upload/v1794179205/alanoud/inventory/image_a251fbcc-36f7-4779-a9f2-19fb2641076e.webp',
-  3: 'https://res.cloudinary.com/genxurzp/image/upload/v1794179072/alanoud/inventory/image_7a846c8a-2c20-4a21-8bce-2843d704e4f4.webp',
-  4: 'https://res.cloudinary.com/genxurzp/image/upload/v1794180954/alanoud/inventory/image_3f57d616-da2c-447a-ba58-2537da38432a.webp',
-}
-
-function PhotoTile({ cell, className = '', label, loading = 'lazy', width = 640 }: { cell: number; className?: string; label: string; loading?: 'eager' | 'lazy'; width?: number }) {
-  return <Image src={cloudinaryImageUrl(modelImages[cell], width) ?? modelImages[cell]} alt={label} width={width} height={Math.round(width * 1.22)} className={className + ' object-contain'} loading={loading} sizes={width >= 1200 ? '(max-width: 768px) 100vw, 50vw' : '(max-width: 640px) 50vw, 25vw'} />
-}
 
 function Logo() {
   return (
@@ -85,69 +74,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
         </div>
       </header>
 
-      <section id="collections" className="relative mx-auto max-w-[1500px] overflow-hidden bg-[#100b08] px-2 pb-8 pt-3 text-[#f8e8c8] sm:px-5 sm:pt-5">
-        <div className="pointer-events-none absolute inset-0 opacity-25" style={{ backgroundImage: 'radial-gradient(ellipse at 12% 12%, #b88b4b 0, transparent 32%), radial-gradient(ellipse at 90% 85%, #9e6c32 0, transparent 28%)' }}/>
-        <div className="relative overflow-hidden rounded-[1.4rem] border border-[#bd9457]/70 bg-[#100d0b] shadow-[0_25px_80px_rgba(0,0,0,.45)] sm:rounded-[2rem]">
-          <div className="grid min-h-[520px] md:min-h-[690px] md:grid-cols-2">
-            <div className="relative order-2 min-h-[340px] overflow-hidden md:order-1 md:min-h-[690px]">
-              <PhotoTile cell={0} label="الموديل 001 من متجر العنود" loading="eager" width={1200} className="absolute inset-0 h-full w-full bg-cover bg-[center_22%]"/>
-              <div className="absolute inset-0 bg-gradient-to-t from-[#100b08]/80 via-transparent to-[#100b08]/10 md:bg-gradient-to-r md:from-transparent md:via-transparent md:to-[#100b08]/20"/>
-              <div className="absolute bottom-5 left-5 rounded-full border border-[#e2c28d]/70 bg-[#17100bd9] px-5 py-2 text-xs tracking-wide text-[#f4dfb8] backdrop-blur-sm sm:bottom-8 sm:left-8">تطريز فلسطيني أصيل</div>
-            </div>
-
-            <div className="relative order-1 flex min-h-[390px] flex-col items-center justify-center overflow-hidden px-5 py-9 text-center md:order-2 md:min-h-[690px] md:px-9 lg:px-14">
-              <div className="absolute inset-0 bg-cover bg-center opacity-45" style={{ backgroundImage: "linear-gradient(180deg, rgba(13,9,6,.3), rgba(13,9,6,.88)), url('https://commons.wikimedia.org/wiki/Special:FilePath/Ibrahimi_mosque_-Hebron.jpg')" }}/>
-              <div className="absolute inset-0 bg-gradient-to-b from-[#120d09]/20 via-[#120d09]/55 to-[#120d09]/95"/>
-              <div className="relative flex flex-col items-center">
-                <div className="mb-3 flex h-[118px] w-[118px] items-center justify-center overflow-hidden rounded-2xl border border-[#d5ad6b]/80 bg-[#100b08] shadow-[0_0_38px_rgba(205,163,94,.2)] sm:h-[140px] sm:w-[140px]"><Image src={cloudinaryImageUrl("https://res.cloudinary.com/genxurzp/image/upload/v1794181046/alanoud/inventory/image_ee910985-ebde-4d84-b448-11a4b3d04e76.webp", 280)!} alt="شعار العنود" width={280} height={280} className="h-full w-full object-contain p-2" /></div>
-                <p className="text-[2rem] font-semibold tracking-wide text-[#f2d29a] sm:text-4xl" style={{ fontFamily: 'Georgia, serif' }}>Al Anoud</p>
-                <h1 className="mt-2 text-2xl font-bold text-[#f8e3bd] sm:text-3xl">العنود للزي الشرعي</h1>
-                <div className="mt-4 flex w-full max-w-sm items-center gap-3 text-[#d9b475]">
-                  <span className="h-px flex-1 bg-gradient-to-l from-transparent to-[#c69b5a]"/>
-                  <span className="text-lg">✥ ❖ ✥</span>
-                  <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[#c69b5a]"/>
-                </div>
-                <p className="mt-5 text-lg leading-relaxed text-[#f4dfbd] sm:text-xl">أناقتكِ من تراثنا ..<br/>وجمالكِ في تفاصيلنا</p>
-                <div className="mt-4 text-3xl text-[#d7b477]">♡</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative border-t border-[#c39a5d]/80 bg-[#15100d] px-3 pb-5 pt-6 sm:px-6 sm:pb-7">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-[#b58a4d]/10 to-transparent"/>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-              {[
-                { title: 'عبايات', cell: 2 },
-                { title: 'أثواب بناتي', cell: 3 },
-                { title: 'أثواب', cell: 4 },
-                { title: 'فستان تطريز', cell: 1 },
-              ].map((item) => (
-                <Link key={item.title} href={`/shop?category=${encodeURIComponent(item.title)}`} className="group relative overflow-hidden rounded-t-[48%] rounded-b-xl border border-[#d0a66a]/80 bg-[#201710] shadow-[0_7px_22px_rgba(0,0,0,.35)]">
-                  <PhotoTile cell={item.cell} label={item.title} loading="lazy" width={520} className="aspect-[.82] w-full bg-cover bg-center transition duration-500 group-hover:scale-[1.025]"/>
-                  <div className="relative mx-auto -mt-1 w-[90%] rounded-full border border-[#e6c58f] bg-gradient-to-b from-[#f2d8a7] to-[#c99c5d] px-2 py-2 text-center text-sm font-bold text-[#1c140c] shadow-lg sm:text-base">{item.title}</div>
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          <div className="relative border-t border-[#b88b50]/70 bg-[#100c09] px-4 pb-7 pt-5 text-center sm:px-8 sm:pt-7">
-            <div className="mx-auto flex max-w-2xl items-center justify-center gap-3 text-lg font-semibold text-[#f1d5a5] sm:text-xl">
-              <span className="text-3xl text-[#d9b77d]">♧</span>
-              <span>الدفع نقدًا عند الاستلام</span>
-            </div>
-            <p className="mt-2 text-xs text-[#c4ad8e]">توصيل إلى مختلف المناطق · معاينة القطعة عند الاستلام</p>
-            <a href="#products" className="mx-auto mt-6 inline-flex min-h-14 items-center justify-center gap-3 rounded-full border-2 border-[#f1d29b] bg-gradient-to-b from-[#f5dfb6] to-[#c99b5c] px-10 text-lg font-bold text-[#1c140c] shadow-[0_5px_0_#8e642f,0_12px_28px_rgba(0,0,0,.35)] transition hover:-translate-y-0.5 sm:text-xl">
-              <span>تسوّقي الآن</span><span className="text-2xl">🛒</span>
-            </a>
-            <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-              <a href="https://www.instagram.com/alanoudhebron/" target="_blank" rel="noreferrer" aria-label="إنستغرام" className="flex min-w-[135px] items-center justify-center gap-2 rounded-xl border border-[#d1aa70] px-4 py-2.5 text-xs text-[#f4dfbd] transition hover:bg-[#3b2a19]"><span className="text-xl">◎</span><span><span className="block text-[9px]">تابعونا على</span><span className="font-semibold">Instagram</span></span></a>
-              <a href="https://www.facebook.com/Alanoudhebron/" target="_blank" rel="noreferrer" aria-label="فيسبوك" className="flex min-w-[135px] items-center justify-center gap-2 rounded-xl border border-[#d1aa70] px-4 py-2.5 text-xs text-[#f4dfbd] transition hover:bg-[#3b2a19]"><span className="text-2xl font-bold">f</span><span><span className="block text-[9px]">تابعونا على</span><span className="font-semibold">Facebook</span></span></a>
-              <a href="https://wa.me/970569388780" target="_blank" rel="noreferrer" aria-label="واتساب" className="flex min-w-[135px] items-center justify-center gap-2 rounded-xl border border-[#d1aa70] px-4 py-2.5 text-xs text-[#f4dfbd] transition hover:bg-[#3b2a19]"><span className="text-xl">◉</span><span><span className="block text-[9px]">تواصلوا معنا</span><span className="font-semibold">WhatsApp</span></span></a>
-            </div>
-            <div className="pointer-events-none absolute bottom-0 left-0 h-2 w-full bg-gradient-to-r from-transparent via-[#c39a5d] to-transparent opacity-70"/>
-          </div>
-        </div>
-      </section>
+      <StorefrontHero />
 
       <section id="products" className="mx-auto max-w-7xl bg-[#100b08] px-4 py-10 text-[#f2dfbd] sm:px-7 sm:py-14">
         <div className="mb-7 flex items-end justify-between border-b border-[#8f6a39] pb-4">
