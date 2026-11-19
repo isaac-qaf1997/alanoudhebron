@@ -1,9 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "crons": [
-    {
+  "schedules": {
+    "opost-status-poll": {
+      "schedule": "*/15 * * * *",
       "path": "/api/admin/opost/sync",
-      "schedule": "*/15 * * * *"
+      "requestMethod": "POST",
+      "timezone": "Asia/Hebron"
     }
-  ]
+  }
 }
