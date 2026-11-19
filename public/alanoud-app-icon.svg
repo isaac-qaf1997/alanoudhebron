@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<rect width="512" height="512" rx="112" fill="#211910"/>
+<rect x="22" y="22" width="468" height="468" rx="96" fill="none" stroke="#c9a66e" stroke-width="8"/>
+<path d="M256 92c-22 0-40 18-40 40v22h-48v226h176V154h-48v-22c0-22-18-40-40-40zm-16 62v-22a16 16 0 0 1 32 0v22z" fill="#d9b77d"/>
+<path d="M190 224h132M190 278h132M190 332h88" stroke="#211910" stroke-width="13" stroke-linecap="round"/>
+<text x="256" y="430" text-anchor="middle" font-family="Arial,sans-serif" font-size="36" font-weight="700" fill="#e7d2ad">ALANOUD</text>
+</svg>

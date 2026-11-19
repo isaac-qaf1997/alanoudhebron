@@ -104,7 +104,7 @@ function shipmentDetails(row: ApiRecord) {
 }
 
 function orderStatusFor(providerStatus: string): StatusKey | null {
-  const status = providerStatus.trim().toLowerCase().replace(/[\\s-]+/g, '_')
+  const status = providerStatus.trim().toLowerCase().replace(/[\s-]+/g, '_')
   if (['picked_up', 'out_for_delivery', 'in_transit', 'shipped', 'قيد_التوصيل', 'قيد_الوصول', 'في_الطريق'].includes(status)) return 'shipped'
   // Opost's COD collection event confirms the parcel hand-off to the customer.
   if (['delivered', 'completed', 'received', 'cod_pickup', 'cod_collected', 'collected', 'تم_التحصيل', 'تم_التسليم', 'تم_التوصيل'].includes(status)) return 'delivered'

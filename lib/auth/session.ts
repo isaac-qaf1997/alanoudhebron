@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
+import { cache } from 'react'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { eq } from 'drizzle-orm'
@@ -77,7 +78,7 @@ export async function clearSession() {
   })
 }
 
-export async function getCurrentUser(): Promise<CurrentUser | null> {
+export const getCurrentUser = cache(async function getCurrentUser(): Promise<CurrentUser | null> {
   const store = await cookies()
   const token = store.get(COOKIE_NAME)?.value
   if (!token) return null
@@ -92,7 +93,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 
   if (!user?.active) return null
   return { id: user.id, username: user.username, role: user.role }
-}
+})
 
 export async function requireUser() {
   const user = await getCurrentUser()

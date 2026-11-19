@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
-export const revalidate = 1800
+export const dynamic = 'force-dynamic'
 
 const BASE = 'https://o.opost.ps'
 type ApiRecord = Record<string, unknown>

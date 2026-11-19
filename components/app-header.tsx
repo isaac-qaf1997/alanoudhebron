@@ -1,6 +1,6 @@
 'use client'
 
-import { Boxes, ClipboardList, LayoutGrid, Package, Store, TicketPercent, Truck } from 'lucide-react'
+import { Boxes, ClipboardList, LayoutGrid, Package, Store, TicketPercent, Truck, Users, Smartphone } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -13,6 +13,8 @@ const NAV = [
   { href: '/inventory', label: 'المخزون والموديلات', icon: Boxes },
   { href: '/coupons', label: 'أكواد الخصم', icon: TicketPercent },
   { href: '/delivery-sheet', label: 'كشف التوصيل اليومي', icon: ClipboardList },
+  { href: '/users', label: 'الموظفون والصلاحيات', icon: Users },
+  { href: '/staff', label: 'تطبيق الموظفين', icon: Smartphone },
   { href: '/shop', label: 'المتجر', icon: Store },
 ]
 
@@ -36,6 +38,7 @@ export function AppHeader({ user, activeCouriers }: { user: CurrentUser; activeC
           </span>
         </Link>
         {user.role === 'admin' ? <Link
+         
           href="/shipping"
           className="flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
         >
@@ -55,6 +58,7 @@ export function AppHeader({ user, activeCouriers }: { user: CurrentUser; activeC
               <li key={item.href}>
                 <Link
                   href={item.href}
+                 
                   aria-current={active ? 'page' : undefined}
                   className={cn(
                     'flex items-center gap-2 border-b-2 px-4 py-3 text-sm transition-colors',
