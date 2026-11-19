@@ -10,10 +10,10 @@ const slides = [
   { image: 'https://res.cloudinary.com/genxurzp/image/upload/v1794180954/alanoud/inventory/image_3f57d616-da2c-447a-ba58-2537da38432a.webp', alt: 'تشكيلة أزياء من العنود', title: 'أناقة لكل حكاية', description: 'من التراث .. نستلهم الجمال' },
 ]
 const categories = [
-  { title: 'ثوب تطريز', value: 'أثواب', image: slides[1].image },
+  { title: 'ثوب تطريز', value: 'أثواب', image: slides[2].image },
   { title: 'ثوب بناتي', value: 'أثواب بناتي', image: 'https://res.cloudinary.com/genxurzp/image/upload/v1794179072/alanoud/inventory/image_7a846c8a-2c20-4a21-8bce-2843d704e4f4.webp' },
   { title: 'عبايات', value: 'عبايات', image: 'https://res.cloudinary.com/genxurzp/image/upload/v1794179205/alanoud/inventory/image_a251fbcc-36f7-4779-a9f2-19fb2641076e.webp' },
-  { title: 'جاكيت تطريز', value: 'جاكيت تطريز', image: slides[2].image },
+  { title: 'جاكيت تطريز', value: 'جاكيت تطريز', image: slides[1].image },
   { title: 'شالات تطريز', value: 'شالات تطريز', image: slides[0].image },
   { title: 'فستان تطريز', value: 'فستان تطريز', image: 'https://res.cloudinary.com/genxurzp/image/upload/v1794179072/alanoud/inventory/image_7a846c8a-2c20-4a21-8bce-2843d704e4f4.webp' },
 ]
@@ -44,7 +44,7 @@ export function StorefrontHero() {
     </div>
     <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
       {categories.map((category) => <Link key={category.title} href={`/shop?category=${encodeURIComponent(category.value)}`} className="group relative isolate aspect-[1/1.02] overflow-hidden rounded-xl bg-[#e7dbcd] shadow-[0_4px_14px_rgba(54,37,23,.12)]">
-        <Image src={category.image} alt={category.title} fill sizes="(max-width: 640px) 50vw, 33vw" className={`object-cover transition duration-700 group-hover:scale-105 ${(category.title === "ثوب تطريز" || category.title === "جاكيت تطريز") ? "-scale-x-100" : ""}`} />
+        <Image src={category.image} alt={category.title} fill sizes="(max-width: 640px) 50vw, 33vw" className="object-cover transition duration-700 group-hover:scale-105" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#160e09]/85 via-transparent to-transparent" />
         <span className="absolute inset-x-2 bottom-3 text-center text-xs font-bold text-white drop-shadow sm:text-sm">{category.title} ←</span>
       </Link>)}
